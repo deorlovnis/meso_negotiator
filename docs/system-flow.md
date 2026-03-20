@@ -23,20 +23,21 @@ Example:
 | James    | 72%        | 72%        | 72%        |
 | Maria    | 55%        | 68%        | 61%        |
 
-## 3. Response (Maria picks one of three paths)
+## 3. Response (Maria picks one of three actions per card)
 
-- **Accept** an offer → go to step 5
-- **Reject** all offers → go to step 4 (or end)
-- **Counter** on one offer → go to step 4
-  - e.g. "I like Offer B but need Net 20 not Net 30"
+- **Accept** an offer → go to step 5. Opponent model reinforces all attribute weights in that offer.
+- **Improve** a term → system asks "To improve [term], what would you trade?" with clickable options (other terms). Opponent model: improved term weight ↑, traded term weight ↓. → go to step 4
+- **Secure** an offer → marks it as acceptable fallback (reservation value). Opponent model: records acceptable utility threshold. Negotiation continues — Maria can still Improve other cards.
 
-Maria's preference signal (which offer she engages with) reveals her priorities — even a rejection is informative.
+Maria's actions are structured clicks, not free text. Every action maps deterministically to an opponent model update.
 
 ## 4. Negotiation Loop (repeats until deal, walk-away, or round limit)
 
 Hard round limit R (configurable, recommended 5–8). Maria sees "round N of R" — transparent deadline.
 
 Concession strategy: diminishing concessions (Boulware). Target utility per round: `target(r) = walk_away + (opening - walk_away) × (1 - r/R)^β` where β > 1.
+
+Opponent model: The engine maintains a supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25]. Each round, Maria's click actions update the weights (Improve term → weight ↑, Trade term → weight ↓, Accept → reinforce all, Secure → set utility floor). The engine combines operator weights (fixed, set by James) with inferred supplier weights to generate MESO offers that reflect both sides' preferences.
 
 Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
 
@@ -73,6 +74,8 @@ Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
                 │                   ▼                  │
                 │   ┌─────────────────────────────┐    │
                 │   │  candidate offer generator   │    │
+                │   │  (operator config +           │    │
+                │   │   opponent model weights)     │    │
                 │   └──────────────┬──────────────┘    │
                 │                  ▼                   │
                 │   ┌─────────────────────────────┐    │
@@ -101,8 +104,19 @@ Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
                                │
                                ▼
                 ┌──────────────────────────────┐
-                │  supplier chooses / counters  │
+                │  supplier clicks:             │
+                │  Accept / Improve / Secure    │
                 └──────────────┬───────────────┘
+                               │
+                               ▼
+                ┌──────────────────────────────────┐
+                │  opponent model update            │
+                │  (click action → weight update)   │
+                │  Improve term → w_term ↑          │
+                │  Trade term   → w_term ↓          │
+                │  Accept       → reinforce all     │
+                │  Secure       → set utility floor  │
+                └──────────────┬───────────────────┘
                                │
                                ▼
   ┌──────────────────────────────────────────────────────────┐
@@ -128,8 +142,8 @@ Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
                         ▼  │
               ┌─────────────────────────────┐
               │  candidate offer generator   │
-              │  (informed by Maria's        │
-              │   revealed preferences)      │
+              │  (informed by opponent model │
+              │   weights + operator config) │
               └──────────────────────────────┘
 ```
 

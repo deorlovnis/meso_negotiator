@@ -60,11 +60,13 @@ James's interaction with the system is NOT the negotiation itself — it's the s
 
 4. **Launch the cohort** — Deploy the negotiation campaign to 50–200 suppliers simultaneously. Each supplier gets their own thread; the bot runs them in parallel.
 
-5. **Monitor in-flight** — Dashboard view of active negotiations: how many are in round 1, 2, 3, how many have reached agreement, how many are stuck, which are at risk of stalling.
+5. **Review opponent model learning** — As negotiations progress, the system builds a supplier weight vector from click actions (Improve/Trade/Accept/Secure). James can see what the bot has inferred about each supplier's priorities. This informs whether the bot is trading the right terms — e.g., if Maria's opponent model shows payment >> price, the bot should be offering faster payment in exchange for lower price.
 
-6. **Review outcomes** — Post-campaign: per-supplier outcome, aggregate statistics, term-by-term comparison vs. target. Flag any anomalies — did the bot give away something it shouldn't have?
+6. **Monitor in-flight** — Dashboard view of active negotiations: how many are in round 1, 2, 3, how many have reached agreement, how many are stuck, which are at risk of stalling.
 
-7. **Handle exceptions** — A small percentage of suppliers will push back hard, escalate, or request human contact. The system surfaces these for James to handle manually.
+7. **Review outcomes** — Post-campaign: per-supplier outcome, aggregate statistics, term-by-term comparison vs. target. Flag any anomalies — did the bot give away something it shouldn't have?
+
+8. **Handle exceptions** — A small percentage of suppliers will push back hard, escalate, or request human contact. The system surfaces these for James to handle manually.
 
 ---
 
@@ -83,6 +85,8 @@ James needs to see that the configuration system is expressive enough to encode 
 He needs proof the system doesn't improvise. If he sets a walk-away of Net 30 on payment terms and the bot agrees to Net 45, that's a policy violation, not a negotiation win. Every deviation must be surfaced and explained.
 
 **Trust signal:** Audit log showing every decision with the rule that drove it. Zero unexplained deviations from configured limits.
+
+**Opponent model visibility:** James can see the inferred supplier weights evolving across rounds. If the bot traded payment terms for price, James can verify: "The opponent model showed this supplier weights payment at 0.38 — trading Net 30 for lower price was the optimal move per my configured strategy."
 
 ### Stage 3 — "Can I explain any outcome to my VP?"
 
@@ -177,10 +181,10 @@ The system must build trust on two fronts simultaneously — and these cannot co
 
 | Front | Who | Fear | What Builds Trust |
 |-------|-----|------|-------------------|
-| **Supplier trust** | Maria | Bot is incompetent, process is theater | Genuine concessions, transparent trade-offs, plain language, respect for her constraints |
+| **Supplier trust** | Maria | Bot is incompetent, process is theater | Click-based actions with visible trade-offs, opponent model learns her priorities and generates increasingly relevant offers each round |
 | **Operator trust** | James | Bot is uncontrollable, deviates from strategy | Strict limit enforcement, full audit trail, explainable decisions, aggregate analytics |
 
-**The tension:** What builds Maria's trust (the bot shows flexibility, moves on her priorities) can trigger James's fear (the bot is giving things away). The resolution is that the bot's flexibility is **configured** by James — when the bot offers Maria better payment terms in exchange for lower price, it's executing James's trade-off weights, not improvising. Both parties' trust is built by the same underlying fact: the system behaves deterministically according to explicit rules.
+**The tension:** What builds Maria's trust (the bot shows flexibility, moves on her priorities) can trigger James's fear (the bot is giving things away). The resolution is that the bot's flexibility is **configured** by James and **informed** by the opponent model — when the bot offers Maria better payment terms in exchange for lower price, it's executing James's trade-off weights combined with what the opponent model learned about Maria's priorities from her click actions. Both parties' trust is built by the same underlying fact: the system behaves deterministically according to explicit rules, and the opponent model updates are transparent and auditable.
 
 This dual-trust architecture is Pactum's core product thesis, and demonstrating awareness of it in the submission is the highest-value signal a candidate can send.
 

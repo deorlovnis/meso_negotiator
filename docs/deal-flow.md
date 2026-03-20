@@ -2,7 +2,7 @@
 
 ## Overview
 
-Maria's contract is expiring. She's used the platform before. James initiates renegotiation. New this time: MESO offers.
+Maria's contract is expiring. She's used the platform before. James initiates renegotiation. New this time: MESO offers with click-based interaction and a dynamic opponent model that learns Maria's preferences from her actions.
 
 ```
                     James (operator)                          Maria (supplier)
@@ -58,19 +58,20 @@ Maria compares to her previous contract ($14.20/Net 60). She knows the platform 
 ### 3. Negotiation rounds
 
 ```
-Maria counters → Engine evaluates → Engine decides → Engine responds
+Maria clicks → Opponent model updates → Engine generates → New MESO set
 
-EVALUATE:  Score offer (utility function) → Check hard constraints → Compare to acceptance threshold
-DECIDE:    Violates constraints → REJECT  |  Above threshold → ACCEPT  |  Below → COUNTER
-COUNTER:   Get target utility from concession curve → Generate 2-3 MESO offers → Present as choices
+CLICK:     Accept (close deal) | Improve term + trade term | Secure (mark fallback)
+UPDATE:    Improve → w_term ↑ | Trade → w_term ↓ | Accept → reinforce all | Secure → set floor
+GENERATE:  Combine operator weights + opponent model → target utility from concession curve → 2-3 MESO offers
 ```
 
 Four mechanisms make this work:
 
 - **Hard round limit (R)** — configurable, recommended 5–8 rounds. Maria sees "round N of R" in each response. Transparent deadline encourages early preference revelation (Moore, 2004). Round R is a final offer — no escalation to operator.
 - **Diminishing concessions (Boulware)** — target utility drops each round: `target(r) = walk_away + (opening - walk_away) × (1 - r/R)^β` where β > 1. Concedes slowly in early rounds, faster near the deadline.
-- **MESO as preference extraction** — equal-utility offers with different term distributions. Maria's choice reveals what she values without asking directly.
+- **MESO as preference extraction** — equal-utility offers with different term distributions. Maria's click actions (Improve/Trade/Secure) reveal what she values through structured signals, not free text.
 - **Trade-off exploitation** — James weights price (0.40), Maria weights payment (0.35). The bot trades payment speed (cheap for James) for lower price (cheap for Maria). Both gain utility.
+- **Opponent model** — supplier weight vector initialized at [0.25, 0.25, 0.25, 0.25], updated each round from click actions. Combined with James's fixed weights to generate offers reflecting both sides. Eliminates LLM interpretation from the preference-learning loop.
 
 ### 4. Failure modes
 
@@ -86,13 +87,13 @@ Four mechanisms make this work:
 
 ### 5. Demo scenario
 
-| Round | Bot | Maria | Engine learns |
-|-------|-----|-------|--------------|
-| 0 | Opens: $11.50, Net 90, 7-day, 6-mo | — | Nothing |
-| 1 | — | Counters: $15.00, Net 30, 14-day, 24-mo | Payment is her priority |
-| 2 | MESO: A) $12.50/Net 40/10-day/12-mo, B) $13.20/Net 30/14-day/12-mo, C) $12.80/Net 45/7-day/18-mo | Picks B | Confirmed: she'll take worse price for Net 30 |
-| 3 | $12.80/Net 30/12-day/15-mo | Counters: $13.50/Net 30/12-day/18-mo | Anchored on Net 30, flexible on delivery, wants longer contract |
-| 4 | $13.10/Net 30/10-day/18-mo | Accepts | Deal closed |
+| Round | Bot | Maria's Action | Opponent Model Learns |
+|-------|-----|----------------|----------------------|
+| 0 | Opens: $11.50, Net 90, 7-day, 6-mo | — | Nothing (weights: 0.25 each) |
+| 1 | 3 MESO offers | Clicks "Improve payment" on Offer A, trades delivery | w_payment ↑, w_delivery ↓ |
+| 2 | 3 new MESO offers (shifted toward faster payment) | Clicks "Secure" on Offer B ($13.20/Net 30/14-day/12-mo) | Utility floor set at Offer B |
+| 3 | 3 offers optimized around Net 30 anchor | Clicks "Improve price" on Offer A, trades contract | w_price ↑, w_contract ↓ |
+| 4 | $13.10/Net 30/10-day/18-mo | Clicks "Accept" | Deal closed. All weights reinforced. |
 
 Result: both sides ahead of status quo ($14.20/Net 60). James got lower price, Maria got Net 30. The bot traded payment speed for price.
 
@@ -100,7 +101,7 @@ Result: both sides ahead of status quo ($14.20/Net 60). James got lower price, M
 
 ### 6. Post-deal
 
-James sees: "Pacific Corrugated: closed round 4, utility 0.72, price improved 7.7%, payment conceded Net 60→30." Every decision traces to the rule that produced it.
+James sees: "Pacific Corrugated: closed round 4, utility 0.72, price improved 7.7%, payment conceded Net 60→30. Opponent model: supplier weighted payment (0.38) > price (0.31) > contract (0.18) > delivery (0.13)." Every decision traces to the rule that produced it.
 
 ## What the scenario simplifies away
 

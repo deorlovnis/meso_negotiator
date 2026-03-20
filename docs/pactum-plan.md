@@ -27,7 +27,7 @@ Supplier's contract is expiring and she wants to re-negotiate a new deal. She is
 
 ## System
 
-Hybrid architecture — rule-based negotiation engine handles offer calculation and scoring (MAUT utility functions), LLM drives the conversation with suppliers (personalized communication style, configurable via system prompt).
+Hybrid architecture — rule-based negotiation engine handles offer calculation and scoring (MAUT utility functions), opponent model learns supplier preferences from structured UI actions (click signals, not free text), LLM drives the conversation framing (personalized communication style, configurable via system prompt).
 
 ## Metrics
 
@@ -41,13 +41,14 @@ Define one metric for each persona that the system will try to optimize for:
 - negotiation engine: takes operator config (weights, targets, limits), generates MESO offers — multiple offers with equal utility for James but different term distributions. Evaluates Maria's responses using MAUT utility score.
 - state management: track negotiation state (pending, countered, accepted, rejected) across rounds.
 - API: endpoints for the front-end — submit offer, get MESO offers, accept/reject, get negotiation state.
+- opponent model: dynamic supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25], updated each round from structured UI actions (Improve/Trade/Accept/Secure). Combined with operator weights to generate MESO offers reflecting both sides' preferences.
 - storage: SQLite — operator config, negotiation state, offer history.
 - LLM layer: drives conversation with supplier, system prompt configurable communication style, auto-accepts deals within configured limits, uses engine for MESO generation and utility scoring.
 - tests: TDD test suite for the negotiation engine.
 
 ## Front-end
 
-- supplier UI: hybrid — chat with the bot + structured offer cards showing MESO options. Maria can talk, counter, or accept.
+- supplier UI: click-based guided flow — 3 offer cards per round, each with Accept (close deal), Improve (counter with direction), Secure (mark as fallback). No typing. "Improve" triggers inline trade-off prompt with clickable options. System generates new offers from structured signals.
 - operator UI: James configures weights, targets, limits
 - MAUT utility indicator: each party sees a progress bar showing how close the current offer is to their ideal (based on their own utility score, not the other party's)
 

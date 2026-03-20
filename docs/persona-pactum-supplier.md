@@ -231,8 +231,8 @@ Understanding how Maria thinks about negotiation determines what UI patterns wil
 
 | Mental Model | How It Shows Up | Design Implication |
 |---|---|---|
-| **Phone/email haggling** | "I make my case, read the room, adjust" | She expects back-and-forth dialogue, not form submission. A conversational wrapper feels natural. |
-| **Zero-sum bargaining** | "Every dollar I give up, they gain" | The UI must actively counter this by surfacing trade-offs — "you could get better payment terms if you flex on delivery." |
+| **Phone/email haggling** | "I make my case, read the room, adjust" | Click-based actions (Improve/Trade) preserve the back-and-forth rhythm without requiring free text. Each click is a strategic move, not form submission. |
+| **Zero-sum bargaining** | "Every dollar I give up, they gain" | The Improve→Trade flow structurally demonstrates trade-offs: improving one term requires offering another. The UI counters zero-sum framing through interaction design, not text. |
 | **"The computer already decided"** | Suspicion that the AI has a fixed answer and the negotiation is theater | Transparency and genuine concession behavior are essential. If the bot never moves, she disengages. |
 | **Portal fatigue** | "The last procurement portal took 45 minutes to figure out" | She has ~15 minutes. First interaction must be immediately comprehensible. |
 | **"AI tools are low quality"** | "Every chatbot I've used has been disappointing — they loop, repeat themselves, and don't actually understand what I'm saying" | The bot's first response must demonstrate it processed her SPECIFIC input, not a template. Zero tolerance for filler phrases ("I understand your concerns," "Let me help you with that"). Numbers must look calculated, not generated. |
@@ -248,9 +248,9 @@ Understanding how Maria thinks about negotiation determines what UI patterns wil
 | **Discoverability** | Immediately understand what she can do | No hidden options. Every action visible. "How do I respond?" should never arise. |
 | **Feedback** | Know what happened after submitting an offer | Immediate confirmation. Show bot state ("Reviewing your offer..."). Never a static screen. |
 | **Conceptual model** | Understand this is real give-and-take, not a form to fill correctly | Frame as conversation with trade-offs, not a test with right/wrong answers. |
-| **Affordances** | Sliders, inputs, buttons that clearly invite interaction | No ambiguity about what is clickable vs. decorative. |
+| **Affordances** | Accept/Improve/Secure buttons on each card, clickable trade-off options | Three clear actions per card. No ambiguity about what is clickable vs. decorative. |
 | **Signifiers** | Labels in her language, not procurement jargon | "Your price" not "Unit cost proposal." "When you get paid" not "Net payment terms." |
-| **Mappings** | See connection between inputs and outcome | Moving price slider up should immediately show impact on overall deal. |
+| **Mappings** | See connection between actions and outcome | Clicking "Improve payment, trade delivery" → next round's offers visibly shift toward faster payment. Direct cause-and-effect. |
 | **Constraints** | Cannot submit impossible offers, cannot accidentally accept | Validation prevents errors. Confirmation before final deal. No irreversible actions without warning. |
 
 ---
@@ -259,15 +259,15 @@ Understanding how Maria thinks about negotiation determines what UI patterns wil
 
 Based on persona research, the strongest UI is a **hybrid** approach:
 
-1. **Conversational wrapper** — The bot greets Maria, explains the situation in plain language, guides the negotiation through dialogue. Matches her mental model (phone/email) and Pactum's actual product (chat-based).
+1. **Click-based guided flow** — No typing required. Maria interacts entirely through structured actions on offer cards. Matches procurement portal familiarity while eliminating free-text friction. Guided path prevents confusion about what to do next.
 
-2. **Structured offer cards** — Within the conversation, each offer displays as a clear card showing all 4 terms, what changed since last round, and current status. Addresses the "opaque process" pain.
+2. **Structured offer cards** — Each round presents 3 MESO offer cards showing all 4 terms. Each card has three actions: **Accept** (close deal), **Improve** (counter with direction), **Secure** (mark as fallback). Clear, discoverable actions.
 
-3. **Direct manipulation inputs** — When countering, she adjusts terms on a structured card (sliders or number fields), not free text. Provides constraints that prevent errors while making affordances obvious.
+3. **Inline trade-off prompts** — Clicking "Improve" on a term triggers: "To improve [term], what would you trade?" with clickable options (other terms). One click, no ambiguity. This is the core preference extraction mechanism.
 
-4. **Trade-off coaching** — The bot explicitly surfaces trade-offs: "I notice you care about payment terms. If you could extend delivery by 5 days, I could offer Net 30 instead of Net 45." This is the single most powerful demo moment — it demonstrates Pactum's value proposition live.
+4. **Trade-off coaching through structure** — The trade-off prompt itself teaches Maria that negotiation is give-and-take, not zero-sum. She sees that improving payment means trading something else — the UI structure counters her zero-sum mental model without lecturing.
 
-5. **Progress transparency** — Visible round number, distance from agreement, negotiation status. Addresses "am I close or wasting my time?" anxiety.
+5. **Progress transparency** — Visible round number, secured offers as fallback anchors, negotiation status. Addresses "am I close or wasting my time?" anxiety.
 
 ### Copy Constraints (Trust Formation)
 
@@ -307,12 +307,12 @@ Features are split by when they must appear. Trust-building features are prerequ
 
 | Feature | Priority | Trust Function |
 |---|---|---|
-| Editable input fields per term (sliders/numbers) | **Must-have** | Enables direct manipulation once she is engaged |
+| Inline trade-off prompts (clickable options after "Improve") | **Must-have** | Core preference extraction mechanism — structured, no typing |
 | Negotiation progress/round indicator | **Must-have** | Answers "where am I?" once she cares about continuing |
 | Trade-off hints in subsequent rounds | **Must-have** | Deepens the "this system is intelligent" impression |
 | Plain-language explanation of bot reasoning | **Must-have** | Maintains transparency established in round 1 |
 | Confirmation step before final acceptance | **Must-have** | Prevents costly slips at the commitment moment |
-| Chat-based negotiation flow | **Must-have** | Conversational wrapper for the structured interactions |
+| Secure action (mark offer as fallback) | **Must-have** | Gives Maria a safety net, reveals acceptable utility threshold to engine |
 | Outcome analytics dashboard | **Nice-to-have** | Interesting post-negotiation, great for evaluator |
 | Keyboard shortcuts / batch actions | **Skip** | Adds complexity, wrong persona |
 
