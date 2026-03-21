@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from back.domain import concession as concession_module
 from back.domain import meso as meso_module
+from back.domain.negotiation import NegotiationError
 from back.domain.types import CardLabel, MesoSet, NegotiationState, Offer, TermValues
 
 if TYPE_CHECKING:
@@ -88,6 +89,12 @@ class GetOffersUseCase:
         """
         negotiation = self._repo.get(negotiation_id)
         is_first_visit = False
+
+        if negotiation.state in (NegotiationState.ACCEPTED, NegotiationState.NO_DEAL):
+            raise NegotiationError(
+                f"Negotiation {negotiation_id} is already terminal "
+                f"(state={negotiation.state.value})."
+            )
 
         if negotiation.state == NegotiationState.PENDING:
             negotiation.activate()

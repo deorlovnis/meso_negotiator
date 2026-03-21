@@ -20,6 +20,7 @@ from back.dependencies import (
     EndNegotiationDep,
     GetOffersDep,
     ImproveDep,
+    RepoDep,
     SecureDep,
 )
 from back.domain.negotiation import NegotiationError
@@ -165,13 +166,13 @@ def _build_offers_response(dto: Any) -> OffersResponse:
 
 
 def _raise_terminal(exc: NegotiationError | ValueError) -> NoReturn:
-    """Re-raise exc as 409 Conflict when it signals a terminal negotiation state.
+    """Re-raise exc as 409 Conflict for any NegotiationError.
 
-    Always raises — either HTTPException (409) or the original exc.
+    Always raises — HTTPException (409) for NegotiationError, or the original
+    exc for ValueError.
     Typed -> NoReturn so mypy treats the except branch as unreachable.
     """
-    msg = str(exc).lower()
-    if "terminal" in msg or "accepted" in msg or "no_deal" in msg or "no deal" in msg:
+    if isinstance(exc, NegotiationError):
         raise HTTPException(status_code=409, detail={"error": str(exc)})
     raise exc
 
@@ -179,6 +180,14 @@ def _raise_terminal(exc: NegotiationError | ValueError) -> NoReturn:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+
+def _raise_not_found(negotiation_id: str) -> NoReturn:
+    """Raise 404 Not Found for a missing negotiation ID."""
+    raise HTTPException(
+        status_code=404,
+        detail={"error": f"Negotiation '{negotiation_id}' not found."},
+    )
 
 
 @router.get(
@@ -192,6 +201,8 @@ async def get_offers(
     """Return current MESO offer set for the supplier UI."""
     try:
         dto = use_case.execute(negotiation_id)
+    except KeyError:
+        _raise_not_found(negotiation_id)
     except (NegotiationError, ValueError) as exc:
         _raise_terminal(exc)  # _raise_terminal always raises
     return _build_offers_response(dto)
@@ -210,6 +221,8 @@ async def agree(
     label = _parse_card_label(body.card_label)
     try:
         dto = use_case.execute(negotiation_id, label)
+    except KeyError:
+        _raise_not_found(negotiation_id)
     except (NegotiationError, ValueError) as exc:
         _raise_terminal(exc)
     return AgreeResponse(
@@ -231,6 +244,8 @@ async def secure(
     label = _parse_card_label(body.card_label)
     try:
         dto = use_case.execute(negotiation_id, label)
+    except KeyError:
+        _raise_not_found(negotiation_id)
     except (NegotiationError, ValueError) as exc:
         _raise_terminal(exc)
     # dto.secured_offer is expected to be the TermValues of the secured offer.
@@ -259,6 +274,8 @@ async def improve(
     label = _parse_card_label(body.card_label)
     try:
         dto = use_case.execute(negotiation_id, label)
+    except KeyError:
+        _raise_not_found(negotiation_id)
     except (NegotiationError, ValueError) as exc:
         _raise_terminal(exc)
     return _build_offers_response(dto)
@@ -275,6 +292,46 @@ async def end_negotiation(
     """Handle supplier taking no action on final round — transition to No Deal."""
     try:
         use_case.execute(negotiation_id)
+    except KeyError:
+        _raise_not_found(negotiation_id)
     except (NegotiationError, ValueError) as exc:
         _raise_terminal(exc)
     return EndResponse(status="no_deal")
+
+
+class ResetResponse(BaseModel):
+    status: str
+
+
+@router.post(
+    "/negotiations/{negotiation_id}/reset",
+    response_model=ResetResponse,
+)
+async def reset_negotiation(
+    negotiation_id: str,
+    repo: RepoDep,
+) -> ResetResponse:
+    """Reset a negotiation to its initial state (demo convenience endpoint)."""
+    from back.domain.negotiation import Negotiation
+    from back.domain.opponent_model import OpponentModel
+    from back.domain.types import NegotiationState, TermConfig, Weights
+
+    config: dict[str, TermConfig] = {
+        "price": TermConfig(opening=150.0, target=120.0, walk_away=100.0, weight=0.4),
+        "payment": TermConfig(opening=90, target=60, walk_away=30, weight=0.2),
+        "delivery": TermConfig(opening=21, target=14, walk_away=7, weight=0.2),
+        "contract": TermConfig(opening=6, target=12, walk_away=24, weight=0.2),
+    }
+    operator_weights = Weights(price=0.4, payment=0.2, delivery=0.2, contract=0.2)
+
+    negotiation = Negotiation(
+        id=negotiation_id,
+        state=NegotiationState.PENDING,
+        round=0,
+        max_rounds=5,
+        config=config,
+        operator_weights=operator_weights,
+        opponent_model=OpponentModel.uniform(),
+    )
+    repo.save(negotiation)
+    return ResetResponse(status="reset")

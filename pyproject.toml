@@ -10,8 +10,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# No source package directory yet — skip package discovery
-packages = []
+packages = ["back"]
 
 [tool.pytest.ini_options]
 testpaths = ["back/tests"]
