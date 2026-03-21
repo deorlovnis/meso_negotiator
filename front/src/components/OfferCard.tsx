@@ -12,6 +12,7 @@ interface OfferCardProps {
   badge?: string
   recommended?: boolean
   details: OfferDetail[]
+  disabled?: boolean
   onAgree: () => void
   onFallback: () => void
   onImprove: () => void
@@ -29,6 +30,7 @@ export function OfferCard({
   badge,
   recommended,
   details,
+  disabled = false,
   onAgree,
   onFallback,
   onImprove,
@@ -79,7 +81,8 @@ export function OfferCard({
         <button
           type="button"
           onClick={onAgree}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900"
+          disabled={disabled}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:pointer-events-none disabled:opacity-50"
         >
           <svg
             className="h-4 w-4"
@@ -97,7 +100,8 @@ export function OfferCard({
         <button
           type="button"
           onClick={onFallback}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+          disabled={disabled}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50"
         >
           <svg
             className="h-3.5 w-3.5 text-gray-400"
@@ -119,7 +123,8 @@ export function OfferCard({
         <button
           type="button"
           onClick={onImprove}
-          className="mt-1 text-xs text-gray-400 underline decoration-gray-300 underline-offset-2 transition hover:text-gray-600"
+          disabled={disabled}
+          className="mt-1 text-xs text-gray-400 underline decoration-gray-300 underline-offset-2 transition hover:text-gray-600 disabled:pointer-events-none disabled:opacity-50"
         >
           Improve terms
         </button>
