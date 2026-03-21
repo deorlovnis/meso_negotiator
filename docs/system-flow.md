@@ -6,11 +6,10 @@ Buyer-initiated, bilateral renegotiation with MESO (Multiple Equivalent Simultan
 
 - Sets per-term: target (ideal) ←→ walk-away (limit)
 - Sets weights: price 0.40 | payment 0.25 | delivery 0.20 | contract 0.15
-- Sets style: system prompt for LLM tone
 
-## 2. Opening (Bot → Maria)
+## 2. Opening (Engine → Maria)
 
-LLM greets Maria, references expiring contract, presents 2–3 MESO offers simultaneously. All offers have equal MAUT utility for James but different term mixes.
+Engine generates opening MESO set and serves it via API. React UI renders 3 offer cards. All offers have equal MAUT utility for James but different term mixes.
 
 Example:
 
@@ -25,9 +24,9 @@ Example:
 
 ## 3. Response (Maria picks one of three actions per card)
 
-- **Accept** an offer → go to step 5. Opponent model reinforces all attribute weights in that offer.
-- **Improve** a term → system asks "To improve [term], what would you trade?" with clickable options (other terms). Opponent model: improved term weight ↑, traded term weight ↓. → go to step 4
-- **Secure** an offer → marks it as acceptable fallback (reservation value). Opponent model: records acceptable utility threshold. Negotiation continues — Maria can still Improve other cards.
+- **Agree** → close deal, go to step 5. Opponent model reinforces all attribute weights.
+- **Improve terms** → signals preference for that card's strength dimension. Opponent model: strength dimension weight ↑, other weights ↓. Engine generates new MESO set directly — no trade-off prompt. → go to step 4
+- **Secure as fallback** → marks offer as reservation value. Opponent model: records acceptable utility threshold. Negotiation continues — Maria can still Improve other cards.
 
 Maria's actions are structured clicks, not free text. Every action maps deterministically to an opponent model update.
 
@@ -37,14 +36,14 @@ Hard round limit R (configurable, recommended 5–8). Maria sees "round N of R" 
 
 Concession strategy: diminishing concessions (Boulware). Target utility per round: `target(r) = walk_away + (opening - walk_away) × (1 - r/R)^β` where β > 1.
 
-Opponent model: The engine maintains a supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25]. Each round, Maria's click actions update the weights (Improve term → weight ↑, Trade term → weight ↓, Accept → reinforce all, Secure → set utility floor). The engine combines operator weights (fixed, set by James) with inferred supplier weights to generate MESO offers that reflect both sides' preferences.
+Opponent model: The engine maintains a supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25]. Each round, Maria's click actions update the weights (Improve → strength dimension weight ↑, others ↓; Agree → reinforce all; Secure → set utility floor). The engine combines operator weights (fixed, set by James) with inferred supplier weights to generate MESO offers that reflect both sides' preferences.
 
-Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
+Engine evaluates each round:
 
-- **Within auto-accept range** → accept, go to step 5
-- **Above walk-away but below target** → Engine generates new MESO set, adjusting toward the terms Maria signaled she cares about. LLM wraps it in conversational response. → back to step 3
-- **Below walk-away** → LLM explains the gap. → back to step 3 or step 5 (no deal)
-- **Round R reached** → Final offer at best remaining terms. No escalation to operator. Accept or no deal.
+- **Maria clicks Agree** → deal closes, go to step 5
+- **Maria clicks Improve** → Engine generates new MESO set, adjusting toward the card's strength dimension. API serves updated offers to React UI. → back to step 3
+- **Maria clicks Secure** → Engine records utility floor. Maria can still Improve or Agree. → back to step 3
+- **Round R reached** → Final offers at best remaining terms. "Improve terms" removed from UI. Agree or no deal.
 
 ## 5. Outcome
 
@@ -85,57 +84,56 @@ Engine scores Maria's counter: MAUT(counter) for James → above walk-away?
                 │                  ▼                   │
                 │   ┌─────────────────────────────┐    │
                 │   │  MESO selector               │    │
-                │   │  (pick top K equivalent)     │    │
+                │   │  (pick top 3 equivalent)     │    │
                 │   └──────────────┬──────────────┘    │
                 │                  │                   │
                 │          NEGOTIATION ENGINE          │
                 └──────────────────┼───────────────────┘
                                    │
-                ┌──────────────────┼───────────────────┐
-                │                  ▼                   │
-                │   ┌───────────────────────┐          │
-                │   │  LLM conversation     │          │
-                │   │  (wraps offers in     │          │
-                │   │   natural language)   │          │
-                │   └──────────┬────────────┘          │
-                │              │                       │
-                │          LLM LAYER                   │
-                └──────────────┼───────────────────────┘
+                        ┌──────────┴──────────┐
+                        │   REST API           │
+                        │   (JSON offer cards) │
+                        └──────────┬──────────┘
+                                   │
+                                   ▼
+                ┌──────────────────────────────────┐
+                │  React card UI                    │
+                │  3 cards: Best Price /             │
+                │  Most Balanced / Fastest Payment   │
+                └──────────────┬───────────────────┘
                                │
-                               ▼
                 ┌──────────────────────────────┐
                 │  supplier clicks:             │
-                │  Accept / Improve / Secure    │
+                │  Agree / Improve / Secure     │
                 └──────────────┬───────────────┘
                                │
                                ▼
                 ┌──────────────────────────────────┐
                 │  opponent model update            │
                 │  (click action → weight update)   │
-                │  Improve term → w_term ↑          │
-                │  Trade term   → w_term ↓          │
-                │  Accept       → reinforce all     │
-                │  Secure       → set utility floor  │
+                │  Improve → w_strength ↑, others ↓ │
+                │  Agree   → reinforce all          │
+                │  Secure  → set utility floor      │
                 └──────────────┬───────────────────┘
                                │
                                ▼
   ┌──────────────────────────────────────────────────────────┐
   │  response evaluator (MAUT utility + strategy rules)      │
   │                                                          │
-  │  ┌──────────────┐  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐ │
-  │  │ auto-accept   │  │ counter       │  │ below         │  │ round R       │ │
-  │  │ (in range)    │  │ (new MESO)    │  │ walk-away     │  │ (final offer) │ │
-  │  └──────┬────────┘  └───────┬───────┘  └──────┬────────┘  └──────┬────────┘ │
-  └─────────┼───────────────────┼──────────────────┼──────────────────┼─────────┘
-            │                   │                  │                  │
-            ▼                   │                  ▼                  ▼
-     ┌────────────┐             │          ┌─────────────┐   ┌──────────────┐
-     │  ACCEPTED  │             │          │  REJECTED   │   │ FINAL OFFER  │
-     └────────────┘             │          └─────────────┘   │ accept or    │
-                                │                            │ no deal      │
-                        ┌───────┘                            └──────────────┘
+  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐ │
+  │  │ Agree          │  │ Improve       │  │ round R       │ │
+  │  │ (close deal)   │  │ (new MESO)    │  │ (final offer) │ │
+  │  └──────┬─────────┘  └───────┬───────┘  └──────┬────────┘ │
+  └─────────┼────────────────────┼──────────────────┼─────────┘
+            │                    │                  │
+            ▼                    │                  ▼
+     ┌────────────┐              │          ┌──────────────┐
+     │  ACCEPTED  │              │          │ FINAL OFFERS │
+     └────────────┘              │          │ agree or     │
+                                 │          │ no deal      │
+                        ┌────────┘          └──────────────┘
                         │
-                        │  ▲ loop: round N of R
+                        │  ▲ loop: rounds 1..R
                         │  │ (diminishing concessions,
                         │  │  offer history,
                         │  │  preference signal)

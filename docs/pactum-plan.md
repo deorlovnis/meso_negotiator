@@ -15,11 +15,11 @@
 
 ## Parties
 
-**James (operator):** A procurement manager who configures the AI bot to negotiate on his behalf. He optimizes for MAUT utility (weighted across all four terms, not just price) because he reports savings to his VP every quarter.
+**James (operator):** A procurement manager who configures the negotiation engine to negotiate on his behalf. He optimizes for MAUT utility (weighted across all four terms, not just price) because he reports savings to his VP every quarter.
 
-**Maria (supplier):** A packaging vendor who negotiates with the bot to get a better deal. She wants to get paid faster because she has equipment loans to cover every month.
+**Maria (supplier):** A packaging vendor who negotiates through the platform to get a better deal. She wants to get paid faster because she has equipment loans to cover every month.
 
-The bot tries to find a deal that works for both.
+The engine tries to find a deal that works for both.
 
 ## Scenario
 
@@ -27,7 +27,7 @@ Supplier's contract is expiring and she wants to re-negotiate a new deal. She is
 
 ## System
 
-Hybrid architecture — rule-based negotiation engine handles offer calculation and scoring (MAUT utility functions), opponent model learns supplier preferences from structured UI actions (click signals, not free text), LLM drives the conversation framing (personalized communication style, configurable via system prompt).
+Rule-based negotiation engine handles offer calculation and scoring (MAUT utility functions). Opponent model learns supplier preferences from structured UI actions (click signals, not free text). React card UI renders offers directly — no conversational layer.
 
 ## Metrics
 
@@ -41,16 +41,14 @@ Define one metric for each persona that the system will try to optimize for:
 - negotiation engine: takes operator config (weights, targets, limits), generates MESO offers — multiple offers with equal utility for James but different term distributions. Evaluates Maria's responses using MAUT utility score.
 - state management: track negotiation state (pending, countered, accepted, rejected) across rounds.
 - API: endpoints for the front-end — submit offer, get MESO offers, accept/reject, get negotiation state.
-- opponent model: dynamic supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25], updated each round from structured UI actions (Improve/Trade/Accept/Secure). Combined with operator weights to generate MESO offers reflecting both sides' preferences.
+- opponent model: dynamic supplier weight vector, initialized at [0.25, 0.25, 0.25, 0.25], updated each round from structured UI actions (Improve/Agree/Secure). Combined with operator weights to generate MESO offers reflecting both sides' preferences.
 - storage: SQLite — operator config, negotiation state, offer history.
-- LLM layer: drives conversation with supplier, system prompt configurable communication style, auto-accepts deals within configured limits, uses engine for MESO generation and utility scoring.
 - tests: TDD test suite for the negotiation engine.
 
 ## Front-end
 
-- supplier UI: click-based guided flow — 3 offer cards per round, each with Accept (close deal), Improve (counter with direction), Secure (mark as fallback). No typing. "Improve" triggers inline trade-off prompt with clickable options. System generates new offers from structured signals.
-- operator UI: James configures weights, targets, limits
-- MAUT utility indicator: each party sees a progress bar showing how close the current offer is to their ideal (based on their own utility score, not the other party's)
+- supplier UI: click-based guided flow — 3 offer cards per round (Best Price, Most Balanced, Fastest Payment), each with Agree (close deal), Improve terms (signal preference, generate new offers), Secure as fallback (mark as reservation value). No typing, no trade-off prompts. Clicking "Improve terms" on a card signals preference for that card's strength; engine generates new offers directly.
+- operator UI: James configures weights, targets, limits (out of scope for initial build)
 
 ---
 

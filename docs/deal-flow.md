@@ -15,14 +15,13 @@ Maria's contract is expiring. She's used the platform before. James initiates re
   PREPARATION      Sets targets, limits, weights per         (doesn't know yet)
                    cohort in the system
                             │                                           │
-  FIRST CONTACT    Bot sends renegotiation invite             Gets notification — "contract is up"
+  FIRST CONTACT    System sends renegotiation invite            Gets notification — "contract is up"
                             │                                           │
-  OPENING          Bot presents first offer                   Compares to previous terms:
+  OPENING          Engine presents 3 MESO offer cards          Compares to previous terms:
                    (James's configured anchor)                "Are they squeezing me or is there room?"
                             │                                           │
-  ROUNDS 1-R       Evaluates counters, generates              Counters, accepts, or walks.
-                   MESO with diminishing concessions.         Picks from 2-3 options per round.
-                   Maria sees "round N of R".                 Knows the deadline upfront.
+  ROUNDS 1-R       Evaluates clicks, generates                 Clicks: Agree, Improve, or Secure.
+                   MESO with diminishing concessions.         Picks from 3 offer cards per round.
                             │                                           │
   CLOSE            Round R: final offer (best terms           Accepts final offer or disengages.
                    the engine can give). No escalation.
@@ -40,7 +39,7 @@ James sets one config for Maria's cohort ("packaging, mid-spend, commodity"):
 |---|---|---|---|
 | Price | $11.50 | $12.50 | $14.50 |
 | Payment | Net 90 | Net 75 | Net 30 |
-| Delivery | 7 days | 10 days | 14 days |
+| Delivery | 7 days | 10 days | 14 days  |
 | Contract | 6 months | 12 months | 24 months |
 
 Weights: price 0.40, payment 0.25, delivery 0.20, contract 0.15.
@@ -51,7 +50,7 @@ Maria's mental config (unknown to the engine): "I need Net 30, I'll give on deli
 
 ### 2. Opening (round 0)
 
-Bot serves James's configured opening. Deterministic — no engine logic yet.
+Engine serves James's configured opening as 3 MESO cards. Deterministic — no opponent model yet.
 
 Maria compares to her previous contract ($14.20/Net 60). She knows the platform but hasn't seen MESO before — presenting multiple offers is a new interaction pattern that may raise questions ("why three options now?").
 
@@ -60,18 +59,18 @@ Maria compares to her previous contract ($14.20/Net 60). She knows the platform 
 ```
 Maria clicks → Opponent model updates → Engine generates → New MESO set
 
-CLICK:     Accept (close deal) | Improve term + trade term | Secure (mark fallback)
-UPDATE:    Improve → w_term ↑ | Trade → w_term ↓ | Accept → reinforce all | Secure → set floor
-GENERATE:  Combine operator weights + opponent model → target utility from concession curve → 2-3 MESO offers
+CLICK:     Agree (close deal) | Improve terms (signal preference) | Secure as fallback (mark reservation)
+UPDATE:    Improve → w_strength ↑, others ↓ | Agree → reinforce all | Secure → set floor
+GENERATE:  Combine operator weights + opponent model → target utility from concession curve → 3 MESO offers
 ```
 
 Four mechanisms make this work:
 
-- **Hard round limit (R)** — configurable, recommended 5–8 rounds. Maria sees "round N of R" in each response. Transparent deadline encourages early preference revelation (Moore, 2004). Round R is a final offer — no escalation to operator.
+- **Hard round limit (R)** — configurable, recommended 5–8 rounds. Round counter is not shown to Maria — the final round removes the "Improve terms" action, signaling that these are the last offers. Round R is a final offer — no escalation to operator.
 - **Diminishing concessions (Boulware)** — target utility drops each round: `target(r) = walk_away + (opening - walk_away) × (1 - r/R)^β` where β > 1. Concedes slowly in early rounds, faster near the deadline.
-- **MESO as preference extraction** — equal-utility offers with different term distributions. Maria's click actions (Improve/Trade/Secure) reveal what she values through structured signals, not free text.
-- **Trade-off exploitation** — James weights price (0.40), Maria weights payment (0.35). The bot trades payment speed (cheap for James) for lower price (cheap for Maria). Both gain utility.
-- **Opponent model** — supplier weight vector initialized at [0.25, 0.25, 0.25, 0.25], updated each round from click actions. Combined with James's fixed weights to generate offers reflecting both sides. Eliminates LLM interpretation from the preference-learning loop.
+- **MESO as preference extraction** — equal-utility offers with different term distributions. Maria's click actions (Improve/Agree/Secure) reveal what she values through structured signals, not free text.
+- **Trade-off exploitation** — James weights price (0.40), Maria weights payment (0.35). The engine trades payment speed (cheap for James) for lower price (cheap for Maria). Both gain utility.
+- **Opponent model** — supplier weight vector initialized at [0.25, 0.25, 0.25, 0.25], updated each round from click actions. Combined with James's fixed weights to generate offers reflecting both sides. Click-to-model pipeline — no interpretation layer.
 
 ### 4. Failure modes
 
@@ -79,7 +78,7 @@ Four mechanisms make this work:
 
 **Silence.** Maria submits one counter, then disappears. Could mean: CFO approval needed, busy, shopping the offer. Engine needs a timeout state — silence ≠ rejection.
 
-**Out-of-scope request.** "Can we split delivery?" or "What about exclusivity?" Outside the four terms. LLM layer redirects or escalates.
+**Out-of-scope request.** Eliminated by click-only UI — Maria cannot input requests outside the four negotiation terms.
 
 **Round limit reached.** Final round presents the best terms the engine can give within James's constraints. If Maria rejects, negotiation ends. No escalation to operator.
 
@@ -87,15 +86,15 @@ Four mechanisms make this work:
 
 ### 5. Demo scenario
 
-| Round | Bot | Maria's Action | Opponent Model Learns |
+| Round | Engine | Maria's Action | Opponent Model Learns |
 |-------|-----|----------------|----------------------|
 | 0 | Opens: $11.50, Net 90, 7-day, 6-mo | — | Nothing (weights: 0.25 each) |
-| 1 | 3 MESO offers | Clicks "Improve payment" on Offer A, trades delivery | w_payment ↑, w_delivery ↓ |
-| 2 | 3 new MESO offers (shifted toward faster payment) | Clicks "Secure" on Offer B ($13.20/Net 30/14-day/12-mo) | Utility floor set at Offer B |
-| 3 | 3 offers optimized around Net 30 anchor | Clicks "Improve price" on Offer A, trades contract | w_price ↑, w_contract ↓ |
-| 4 | $13.10/Net 30/10-day/18-mo | Clicks "Accept" | Deal closed. All weights reinforced. |
+| 1 | 3 MESO cards (Best Price / Most Balanced / Fastest Payment) | Clicks "Improve terms" on Fastest Payment card | w_payment ↑, others ↓ |
+| 2 | 3 new MESO cards (shifted toward faster payment) | Clicks "Secure as fallback" on Most Balanced ($13.20/Net 30/14-day/12-mo) | Utility floor set |
+| 3 | 3 cards optimized around Net 30 anchor | Clicks "Improve terms" on Best Price card | w_price ↑, others ↓ |
+| 4 | $13.10/Net 30/10-day/18-mo | Clicks "Agree" | Deal closed. All weights reinforced. |
 
-Result: both sides ahead of status quo ($14.20/Net 60). James got lower price, Maria got Net 30. The bot traded payment speed for price.
+Result: both sides ahead of status quo ($14.20/Net 60). James got lower price, Maria got Net 30. The engine traded payment speed for price.
 
 **Realism note:** Walmart pilot showed 1.5% average savings on tail spend; 3% after expansion (HBR). This demo shows 7.7% — plausible for an individual deal with complementary priorities, but not the average.
 
@@ -115,9 +114,9 @@ Because Maria is a returning supplier on a familiar platform:
 
 In ANAC, both sides are bots maximizing hidden utility functions. Here, one side is human:
 
-1. Maria may reject a better deal because the bot's tone annoyed her
-2. Language quality and presentation are part of the negotiation
-3. The engine must be explainable in real-time
+1. Maria may reject a better deal because the UI presentation felt unfair or confusing
+2. Card layout, labels, and visual design are part of the negotiation experience
+3. The engine must be explainable through structured UI elements, not prose
 
 ## Benchmarks for the presentation
 
