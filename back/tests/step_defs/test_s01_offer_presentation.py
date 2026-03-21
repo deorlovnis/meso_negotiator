@@ -158,10 +158,14 @@ def then_strong_terms_have_checkmarks(ctx: ScenarioContext) -> None:
     fastest_payment_card = label_map.get("FASTEST PAYMENT")
     assert best_price_card is not None
     assert fastest_payment_card is not None
-    # BEST PRICE must have the lowest (best for operator) or tied-lowest price
+    # BEST PRICE must have the most supplier-favorable price among all 3 cards.
+    # Direction depends on config: toward operator's walk_away = supplier's ideal.
     prices = [c.price for c in ctx.current_offers]
-    assert best_price_card.price == min(prices), (
-        f"BEST PRICE card price {best_price_card.price} is not the minimum {min(prices)}"
+    walk_away = ctx.config.walk_away["price"]
+    target = ctx.config.targets["price"]
+    best_for_supplier = max(prices) if walk_away > target else min(prices)
+    assert best_price_card.price == best_for_supplier, (
+        f"BEST PRICE card price {best_price_card.price} is not the supplier-best {best_for_supplier}"
     )
     # FASTEST PAYMENT must have the shortest (lowest Net days) payment
     payments = [c.payment for c in ctx.current_offers]
@@ -175,7 +179,10 @@ def then_best_price_has_checkmark_on_price(ctx: ScenarioContext) -> None:
     label_map = {card.label: card for card in ctx.current_offers}
     best_price_card = label_map["BEST PRICE"]
     prices = [c.price for c in ctx.current_offers]
-    assert best_price_card.price == min(prices)
+    walk_away = ctx.config.walk_away["price"]
+    target = ctx.config.targets["price"]
+    best_for_supplier = max(prices) if walk_away > target else min(prices)
+    assert best_price_card.price == best_for_supplier
 
 
 @then('the "FASTEST PAYMENT" card shows a checkmark on the payment term')

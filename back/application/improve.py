@@ -23,9 +23,9 @@ if TYPE_CHECKING:
     from back.application.ports import NegotiationRepository
     from back.domain.types import CardLabel
 
-_DEFAULT_BETA = 3.0
+_DEFAULT_BETA = 2.0
 _OPENING_UTILITY = 1.0
-_WALKAWAY_UTILITY = 0.0
+_WALKAWAY_UTILITY = 0.15
 
 
 class ImproveUseCase:

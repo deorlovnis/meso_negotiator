@@ -7,13 +7,15 @@ Error categories targeted:
 Source spec: core-loop.feature section 15.
 Architecture ref: ARCHITECTURE.md domain/concession.py contract.
 
-Formula under test:
-    target(r) = walkaway + (opening - walkaway) * (1 - r/R)^beta
+Formula under test (Faratin 1998):
+    target(r) = walkaway + (opening - walkaway) * (1 - (r-1)/(R-1))^(1/beta)
 
 Where:
     r = current round (1-indexed)
     R = max rounds
     beta > 1 gives Boulware (hold firm early, concede late)
+
+Round 1 yields opening utility (no concession); round R yields walk-away.
 """
 
 from __future__ import annotations
@@ -35,12 +37,11 @@ class TestConcessionCurveBoundaries:
     - Final round target is near walk-away utility
     """
 
-    def test_round_one_near_opening_utility(self):
+    def test_round_one_equals_opening_utility(self):
         """section 15: 'target utility is close to the opening utility value'
 
-        At round 1 of 5: target = 0.0 + (1.0 - 0.0) * (1 - 1/5)^3
-                                     = (0.8)^3 = 0.512
-        With Boulware beta=3, round 1 should still be well above zero.
+        At round 1 of 5: progress = (1-1)/(5-1) = 0, so target = opening.
+        Round 1 means no concession yet.
         """
         result = target_utility(
             round=1,
@@ -49,11 +50,8 @@ class TestConcessionCurveBoundaries:
             walkaway_utility=WALKAWAY_UTILITY,
             beta=BOULWARE_BETA,
         )
-        # Round 1 of 5 with beta=3: (1 - 1/5)^3 = 0.512
-        expected = WALKAWAY_UTILITY + (OPENING_UTILITY - WALKAWAY_UTILITY) * (1 - 1 / 5) ** 3
-        assert abs(result - expected) < 1e-9, f"Expected {expected}, got {result}"
-        assert result > 0.5, (
-            f"Round 1 should be close to opening, got {result}"
+        assert abs(result - OPENING_UTILITY) < 1e-9, (
+            f"Round 1 should equal opening utility {OPENING_UTILITY}, got {result}"
         )
 
     def test_final_round_near_walkaway_utility(self):
@@ -74,11 +72,11 @@ class TestConcessionCurveBoundaries:
             f"Final round should equal walk-away {WALKAWAY_UTILITY}, got {result}"
         )
 
-    def test_round_zero_gives_opening_utility(self):
+    def test_round_zero_above_opening_utility(self):
         """Adversarial: round 0 (before negotiation starts).
 
-        At round 0: target = 0.0 + (1.0 - 0.0) * (1 - 0/5)^3 = 1.0
-        This tests the formula handles the pre-start boundary.
+        At round 0: progress = (0-1)/(5-1) = -0.25, so (1 - (-0.25))^3 = 1.25^3 > 1.
+        Round 0 is outside the intended range; result exceeds opening utility.
         """
         result = target_utility(
             round=0,
@@ -87,8 +85,8 @@ class TestConcessionCurveBoundaries:
             walkaway_utility=WALKAWAY_UTILITY,
             beta=BOULWARE_BETA,
         )
-        assert abs(result - OPENING_UTILITY) < 1e-9, (
-            f"Round 0 should equal opening utility {OPENING_UTILITY}, got {result}"
+        assert result >= OPENING_UTILITY, (
+            f"Round 0 should be at or above opening utility {OPENING_UTILITY}, got {result}"
         )
 
 
@@ -115,16 +113,15 @@ class TestConcessionCurveMonotonicity:
             )
             previous = current
 
-    def test_boulware_concedes_less_late_more_early(self):
+    def test_boulware_concedes_less_early_more_late(self):
         """Verify the Boulware curve shape with beta > 1.
 
-        With the formula target(r) = walkaway + (opening - walkaway) * (1 - r/R)^beta,
-        beta > 1 makes (1 - r/R)^beta concave: the utility drops steeply in
-        early rounds and flattens near the deadline. This means the *absolute
-        concession* (utility drop per round) is larger early and smaller late.
+        With the formula target(r) = walkaway + (opening - walkaway) * (1 - p)^(1/beta),
+        beta > 1 makes (1 - p)^(1/beta) concave: the utility holds firm in
+        early rounds and drops steeply near the deadline. This means the *absolute
+        concession* (utility drop per round) is smaller early and larger late.
 
-        section 6: 'diminishing concessions' — each successive round concedes
-        less than the previous one.
+        Boulware strategy: hold firm early, concede near deadline.
         """
         targets = [
             target_utility(
@@ -140,8 +137,8 @@ class TestConcessionCurveMonotonicity:
         drop_early = targets[0] - targets[1]  # round 1 -> round 2
         drop_late = targets[3] - targets[4]    # round 4 -> round 5
 
-        assert drop_early > drop_late, (
-            f"Boulware (beta>1) concedes more early, less late: "
+        assert drop_early < drop_late, (
+            f"Boulware (beta>1) holds firm early, concedes late: "
             f"early drop {drop_early:.4f} vs late drop {drop_late:.4f}"
         )
 
@@ -153,8 +150,8 @@ class TestConcessionCurveBetaVariants:
     """
 
     def test_beta_one_gives_linear_concession(self):
-        """Beta = 1 should produce a linear curve: target = opening * (1 - r/R)."""
-        for r in range(0, MAX_ROUNDS + 1):
+        """Beta = 1 should produce a linear curve: target = opening * (1 - (r-1)/(R-1))."""
+        for r in range(1, MAX_ROUNDS + 1):
             result = target_utility(
                 round=r,
                 max_rounds=MAX_ROUNDS,
@@ -162,79 +159,61 @@ class TestConcessionCurveBetaVariants:
                 walkaway_utility=WALKAWAY_UTILITY,
                 beta=1.0,
             )
-            expected = WALKAWAY_UTILITY + (OPENING_UTILITY - WALKAWAY_UTILITY) * (1 - r / MAX_ROUNDS)
+            progress = (r - 1) / (MAX_ROUNDS - 1)
+            expected = WALKAWAY_UTILITY + (OPENING_UTILITY - WALKAWAY_UTILITY) * (1 - progress)
             assert abs(result - expected) < 1e-9, (
                 f"Beta=1 at round {r}: expected {expected}, got {result}"
             )
 
     def test_high_beta_holds_firm_longer(self):
-        """Beta = 10 (extreme Boulware): target stays very high until final rounds.
+        """Beta = 10 (extreme Boulware): higher beta holds firm longer.
 
-        Round 1 of 5: (1 - 0.2)^10 = 0.8^10 = 0.1074
-        Wait, that's LOW. Let me recalculate.
-        Actually (0.8)^10 = 0.10737...
-
-        Hmm, that's not "holding firm." High beta means steep concession early
-        in the exponent space? No -- (1 - r/R)^beta: higher beta makes the
-        base (1 - r/R) which is < 1 shrink faster. So higher beta actually
-        concedes MORE, not less.
-
-        Actually re-reading the architecture: beta > 1 gives Boulware.
-        (1-r/R) is between 0 and 1. Raising to power > 1 makes it smaller.
-        So the target drops faster with higher beta.
-
-        But Boulware is supposed to hold firm early and concede late. Let me
-        re-examine. With beta=3, round 1: 0.8^3 = 0.512. With beta=1: 0.8.
-        So higher beta gives LOWER utility at round 1 -- that's conceding MORE
-        early, which is the opposite of Boulware.
-
-        This may indicate the formula in the architecture is actually a
-        Conceder curve, not Boulware. OR the formula is correct and the
-        interpretation differs. For now, test the formula as documented.
+        With 1/beta exponent, higher beta → smaller exponent → curve stays
+        closer to opening utility longer. Compare at round 2.
         """
         result_high_beta = target_utility(
-            round=1,
+            round=2,
             max_rounds=MAX_ROUNDS,
             opening_utility=OPENING_UTILITY,
             walkaway_utility=WALKAWAY_UTILITY,
             beta=10.0,
         )
         result_low_beta = target_utility(
-            round=1,
+            round=2,
             max_rounds=MAX_ROUNDS,
             opening_utility=OPENING_UTILITY,
             walkaway_utility=WALKAWAY_UTILITY,
             beta=1.0,
         )
-        # Higher beta should give different (lower) utility at round 1
-        # compared to beta=1
-        assert result_high_beta < result_low_beta, (
-            f"High beta ({result_high_beta}) should differ from low beta "
-            f"({result_low_beta}) at round 1"
+        # Higher beta should give higher utility at round 2 (holds firm)
+        assert result_high_beta > result_low_beta, (
+            f"High beta ({result_high_beta}) should be higher than low beta "
+            f"({result_low_beta}) at round 2 (holds firm longer)"
         )
 
     def test_beta_less_than_one_gives_conceder_curve(self):
         """Beta < 1 should produce Conceder behavior (concede early, hold late).
 
-        This is the inverse of Boulware. At round 1 with beta=0.5:
-        (0.8)^0.5 = 0.894... which is higher than linear (0.8).
+        With 1/beta exponent, beta=0.5 → exponent=2 → convex curve that
+        drops faster early. At round 2 with beta=0.5: (0.75)^2 = 0.5625,
+        which is lower than linear (0.75).
         """
         result = target_utility(
-            round=1,
+            round=2,
             max_rounds=MAX_ROUNDS,
             opening_utility=OPENING_UTILITY,
             walkaway_utility=WALKAWAY_UTILITY,
             beta=0.5,
         )
         linear_result = target_utility(
-            round=1,
+            round=2,
             max_rounds=MAX_ROUNDS,
             opening_utility=OPENING_UTILITY,
             walkaway_utility=WALKAWAY_UTILITY,
             beta=1.0,
         )
-        assert result > linear_result, (
-            f"Conceder (beta<1) at round 1 should yield higher utility than "
+        assert result < linear_result, (
+            f"Conceder (beta<1) at round 2 should yield lower utility than "
             f"linear: {result} vs {linear_result}"
         )
 
@@ -255,17 +234,17 @@ class TestConcessionCurveWithNonZeroWalkaway:
             f"Final round should reach walk-away 0.30, got {result}"
         )
 
-    def test_nonzero_walkaway_at_round_zero(self):
-        """Round 0 should equal opening utility regardless of walk-away."""
+    def test_nonzero_walkaway_at_round_one(self):
+        """Round 1 should equal opening utility regardless of walk-away."""
         result = target_utility(
-            round=0,
+            round=1,
             max_rounds=5,
             opening_utility=0.95,
             walkaway_utility=0.30,
             beta=BOULWARE_BETA,
         )
         assert abs(result - 0.95) < 1e-9, (
-            f"Round 0 should equal opening 0.95, got {result}"
+            f"Round 1 should equal opening 0.95, got {result}"
         )
 
     def test_nonzero_walkaway_monotonic(self):

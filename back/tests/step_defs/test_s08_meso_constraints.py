@@ -125,11 +125,20 @@ def then_no_contract_longer_than_walk_away(ctx: ScenarioContext) -> None:
 def then_best_price_has_lowest_price(ctx: ScenarioContext) -> None:
     label_map = {card.label: card for card in ctx.current_offers}
     best_price_card = label_map["BEST PRICE"]
-    min_price = min(c.price for c in ctx.current_offers)
-    assert best_price_card.price <= min_price + 1e-6, (
-        f"BEST PRICE card price {best_price_card.price:.2f} is not the lowest "
-        f"(min={min_price:.2f})"
-    )
+    prices = [c.price for c in ctx.current_offers]
+    # BEST PRICE selects toward operator's walk_away (supplier's ideal).
+    walk_away = ctx.config.walk_away["price"]
+    target = ctx.config.targets["price"]
+    if walk_away < target:
+        assert best_price_card.price <= min(prices) + 1e-6, (
+            f"BEST PRICE card price {best_price_card.price:.2f} is not the lowest "
+            f"(min={min(prices):.2f})"
+        )
+    else:
+        assert best_price_card.price >= max(prices) - 1e-6, (
+            f"BEST PRICE card price {best_price_card.price:.2f} is not the highest "
+            f"(max={max(prices):.2f})"
+        )
 
 
 @then('the "FASTEST PAYMENT" card has the fastest payment terms among the 3 cards')

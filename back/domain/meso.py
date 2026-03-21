@@ -36,8 +36,15 @@ from back.domain.types import (
 UTILITY_TOLERANCE = 0.02
 
 # Number of steps to sample per dimension when generating candidates.
-# 12 steps gives 12^4 = 20736 candidates — good coverage near boundaries.
-_GRID_STEPS = 12
+# 16 steps gives 16^4 = 65536 candidates — fine enough to reflect the
+# per-round achievement floor as distinct term values after rounding.
+_GRID_STEPS = 16
+
+# Scaling factor for the per-term achievement floor.  At a given target
+# utility each term must have achievement >= target_utility * _FLOOR_SCALE.
+# This prevents any single term from jumping to its walk-away extreme while
+# others compensate, ensuring visible improvement across every round.
+_FLOOR_SCALE = 0.5
 
 
 def generate_meso_set(
@@ -65,10 +72,20 @@ def generate_meso_set(
     candidates = _generate_candidates(config, operator_weights, target_utility)
 
     if len(candidates) < 3:
-        # Widen tolerance as fallback: try 2x and 3x tolerance
+        # Widen tolerance as fallback: try 2x, 4x, 8x tolerance
         for multiplier in [2, 4, 8]:
             candidates = _generate_candidates(
                 config, operator_weights, target_utility, UTILITY_TOLERANCE * multiplier
+            )
+            if len(candidates) >= 3:
+                break
+
+    if len(candidates) < 3:
+        # Drop the achievement floor as last resort (pass floor_scale=0)
+        for multiplier in [1, 2, 4, 8]:
+            candidates = _generate_candidates(
+                config, operator_weights, target_utility,
+                UTILITY_TOLERANCE * multiplier, floor_scale=0.0,
             )
             if len(candidates) >= 3:
                 break
@@ -100,11 +117,15 @@ def _generate_candidates(
     operator_weights: Weights,
     target_utility: float,
     tolerance: float = UTILITY_TOLERANCE,
+    floor_scale: float = _FLOOR_SCALE,
 ) -> list[TermValues]:
     """Sample a grid of term combinations and return those near target utility.
 
-    Samples uniformly between walk_away and opening for each term, then
-    filters to those within target_utility ± tolerance.
+    Samples the full walk_away→opening range for each term, then filters to
+    candidates within target_utility ± tolerance AND whose per-term
+    achievements all exceed a minimum floor.  The floor prevents any single
+    term from jumping to its walk-away extreme while others compensate,
+    ensuring visible improvement across negotiation rounds.
     """
     price_cfg = config["price"]
     payment_cfg = config["payment"]
@@ -122,6 +143,8 @@ def _generate_candidates(
         contract_cfg.walk_away, contract_cfg.opening, _GRID_STEPS
     )
 
+    achievement_floor = target_utility * floor_scale
+
     candidates: list[TermValues] = []
     for price, payment, delivery, contract in itertools.product(
         price_range, payment_range, delivery_range, contract_range
@@ -130,8 +153,17 @@ def _generate_candidates(
             price=price, payment=payment, delivery=delivery, contract=contract
         )
         utility = compute_utility(terms, config, operator_weights)
-        if abs(utility - target_utility) <= tolerance:
-            candidates.append(terms)
+        if abs(utility - target_utility) > tolerance:
+            continue
+        # Enforce per-term achievement floor to prevent premature extremes
+        if achievement_floor > 0 and (
+            _per_term_achievement(price, price_cfg) < achievement_floor
+            or _per_term_achievement(payment, payment_cfg) < achievement_floor
+            or _per_term_achievement(delivery, delivery_cfg) < achievement_floor
+            or _per_term_achievement(contract, contract_cfg) < achievement_floor
+        ):
+            continue
+        candidates.append(terms)
 
     return candidates
 
@@ -161,18 +193,18 @@ def _select_best_price(
 ) -> TermValues:
     """Select the candidate with the most favorable price for the supplier.
 
-    Favorable price = lowest numerical value (cheaper per k boxes).
-    Among candidates with equally low price, use opponent weights to
-    prefer the one with better payment terms (next highest opponent weight).
+    The supplier's ideal price is toward the operator's walk_away (the
+    operator's limit = the supplier's best achievable).  As the operator
+    concedes across rounds, prices can move closer to walk_away, so this
+    selection produces monotonically improving prices for the supplier.
     """
     price_cfg = config["price"]
-    # "Best price" for supplier = lowest price (toward opening or below target)
-    # opening is the most generous price for supplier
-    # walk_away is the least generous
-    # Determine which direction is "better" for supplier
-    better_price_is_lower = price_cfg.opening < price_cfg.walk_away
+    # Supplier wants price closest to operator's walk_away.
+    # walk_away < target → supplier benefits from lower price → select min.
+    # walk_away > target → supplier benefits from higher price → select max.
+    supplier_prefers_lower = price_cfg.walk_away < price_cfg.target
 
-    if better_price_is_lower:
+    if supplier_prefers_lower:
         best_price_value = min(c.price for c in candidates)
     else:
         best_price_value = max(c.price for c in candidates)

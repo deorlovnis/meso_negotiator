@@ -3,11 +3,11 @@
 Pure function with no side effects. Implements the Boulware strategy:
 hold firm early, concede more near deadline.
 
-Formula:
-    target(r) = walk_away + (opening - walk_away) * (1 - r / R) ^ beta
+Formula (Faratin 1998 time-dependent tactic):
+    target(r) = walk_away + (opening - walk_away) * (1 - (r-1) / (R-1)) ^ (1/beta)
 
 Parameters:
-- beta > 1 produces Boulware behavior (recommended 2.5-4.0)
+- beta > 1 produces Boulware behavior (recommended 2.0-4.0)
 - beta = 1 produces linear concession
 - beta < 1 produces conceder behavior (not recommended)
 """
@@ -35,10 +35,10 @@ def target_utility(
         Target utility in [walkaway_utility, opening_utility].
 
     Notes:
-        At round 1:   target is near opening_utility (holds firm)
-        At round R:   target is near walkaway_utility (maximum concession)
+        At round 1:   target equals opening_utility (no concession)
+        At round R:   target equals walkaway_utility (maximum concession)
     """
-    progress = round / max_rounds
+    progress = (round - 1) / (max_rounds - 1) if max_rounds > 1 else 1.0
     return walkaway_utility + (opening_utility - walkaway_utility) * (
-        (1.0 - progress) ** beta
+        (1.0 - progress) ** (1.0 / beta)
     )

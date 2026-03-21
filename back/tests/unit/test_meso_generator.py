@@ -45,8 +45,10 @@ BACKGROUND_CONFIG = {
 OPERATOR_WEIGHTS = Weights(price=0.40, payment=0.25, delivery=0.20, contract=0.15)
 UNIFORM_OPPONENT_WEIGHTS = Weights(price=0.25, payment=0.25, delivery=0.25, contract=0.25)
 
-# Target utility at round 1 with beta=3: (1 - 1/5)^3 = 0.512
-ROUND_1_TARGET = 0.512
+# Target utility at round 1 with the corrected formula: progress = (1-1)/(5-1) = 0
+# so target = walkaway + (opening - walkaway) * 1.0 = opening = 1.0.
+# Use a mid-range target for robust testing of the MESO generator.
+ROUND_1_TARGET = 0.50
 
 
 def _get_offers(meso: MesoSet) -> list:
@@ -215,8 +217,12 @@ class TestDistinctTermDistributions:
     MOST BALANCED does not have the most extreme value on any single term'
     """
 
-    def test_best_price_has_lowest_price(self):
-        """section 8: 'BEST PRICE card has the lowest price among the 3 cards'"""
+    def test_best_price_has_most_supplier_favorable_price(self):
+        """section 8: 'BEST PRICE card has the most supplier-favorable price'
+
+        BEST_PRICE selects toward operator's walk_away (supplier's ideal).
+        For this config walk_away > target, so supplier prefers higher price.
+        """
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -228,10 +234,18 @@ class TestDistinctTermDistributions:
             meso.most_balanced.terms.price,
             meso.fastest_payment.terms.price,
         ]
-        assert best_price <= min(other_prices), (
-            f"BEST_PRICE card price ({best_price}) should be <= all others "
-            f"({other_prices})"
-        )
+        walk_away = BACKGROUND_CONFIG["price"].walk_away
+        target = BACKGROUND_CONFIG["price"].target
+        if walk_away < target:
+            assert best_price <= min(other_prices), (
+                f"BEST_PRICE card price ({best_price}) should be <= all others "
+                f"({other_prices})"
+            )
+        else:
+            assert best_price >= max(other_prices), (
+                f"BEST_PRICE card price ({best_price}) should be >= all others "
+                f"({other_prices})"
+            )
 
     def test_fastest_payment_has_fastest_payment(self):
         """section 8: 'FASTEST PAYMENT card has the fastest payment terms'

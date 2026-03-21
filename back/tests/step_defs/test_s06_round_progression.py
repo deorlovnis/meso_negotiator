@@ -165,11 +165,9 @@ def then_should_have_secured_first(ctx: ScenarioContext) -> None:
     "from round 3 to round 4"
 )
 def then_diminishing_concessions(ctx: ScenarioContext) -> None:
-    """Verify the Boulware concession curve produces diminishing improvements."""
+    """Verify the Boulware concession curve: hold firm early, concede near deadline."""
     from back.domain.concession import target_utility
 
-    # Compare the delta in target utility between consecutive rounds.
-    # Round limit from ctx.
     rl = ctx.round_limit
     beta = 3.0
     u1 = target_utility(1, rl, 1.0, 0.0, beta)
@@ -178,9 +176,10 @@ def then_diminishing_concessions(ctx: ScenarioContext) -> None:
     u4 = target_utility(4, rl, 1.0, 0.0, beta)
     delta_1_2 = abs(u1 - u2)
     delta_3_4 = abs(u3 - u4)
-    assert delta_1_2 > delta_3_4, (
-        f"Concession round 1->2 ({delta_1_2:.4f}) should be larger than "
-        f"round 3->4 ({delta_3_4:.4f})"
+    # Boulware: concedes less early, more near deadline
+    assert delta_1_2 < delta_3_4, (
+        f"Boulware: early concession round 1->2 ({delta_1_2:.4f}) should be "
+        f"smaller than later round 3->4 ({delta_3_4:.4f})"
     )
 
 
@@ -197,11 +196,11 @@ def then_boulware_curve(ctx: ScenarioContext) -> None:
         )
         for r in range(1, rl)
     ]
-    # Each delta should be >= the next (non-increasing concessions)
+    # Boulware: concessions are non-decreasing (hold firm early, concede late)
     for i in range(len(deltas) - 1):
-        assert deltas[i] >= deltas[i + 1] - 1e-9, (
-            f"Concession at round {i + 1}->{i + 2} ({deltas[i]:.4f}) should be >= "
-            f"round {i + 2}->{i + 3} ({deltas[i + 1]:.4f})"
+        assert deltas[i] <= deltas[i + 1] + 1e-9, (
+            f"Boulware: concession at round {i + 1}->{i + 2} ({deltas[i]:.4f}) "
+            f"should be <= round {i + 2}->{i + 3} ({deltas[i + 1]:.4f})"
         )
 
 

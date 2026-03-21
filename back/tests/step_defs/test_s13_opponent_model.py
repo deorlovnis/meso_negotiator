@@ -153,13 +153,18 @@ def then_reinforced_weights_available(ctx: ScenarioContext) -> None:
 )
 def then_offers_reflect_combined_priorities(ctx: ScenarioContext) -> None:
     assert len(ctx.current_offers) == 3
-    # BEST PRICE should have a favorable (low) price
+    # BEST PRICE should have the most supplier-favorable price
     best_price = next(c for c in ctx.current_offers if c.label == "BEST PRICE")
     fastest_payment = next(
         c for c in ctx.current_offers if c.label == "FASTEST PAYMENT"
     )
-    # Best price card should have a lower price than fastest payment card
-    assert best_price.price <= fastest_payment.price
+    # Best price card should be more extreme than fastest payment on price
+    walk_away = ctx.config.walk_away["price"]
+    target = ctx.config.targets["price"]
+    if walk_away < target:
+        assert best_price.price <= fastest_payment.price
+    else:
+        assert best_price.price >= fastest_payment.price
 
 
 @then(

@@ -27,11 +27,11 @@ if TYPE_CHECKING:
     from back.application.ports import NegotiationRepository
 
 # Default Boulware beta parameter
-_DEFAULT_BETA = 3.0
+_DEFAULT_BETA = 2.0
 # Opening utility: offer starts at operator's maximum possible utility
 _OPENING_UTILITY = 1.0
-# Walkaway utility: minimum acceptable utility
-_WALKAWAY_UTILITY = 0.0
+# Walkaway utility: minimum acceptable utility (floor prevents card collapse)
+_WALKAWAY_UTILITY = 0.15
 
 
 @dataclass(frozen=True)

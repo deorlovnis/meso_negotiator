@@ -74,11 +74,9 @@ def then_utility_near_opening(ctx: ScenarioContext) -> None:
 
 @then("the target utility is close to the walk-away utility value")
 def then_utility_near_walkaway(ctx: ScenarioContext) -> None:
-    # Final round (5/5): progress = 1.0, so target = (1 - 1.0)^3 = 0.0
-    assert ctx.computed_utility < 0.1, (
-        f"Final round target utility should be near walk-away (<0.1), "
-        f"got {ctx.computed_utility}"
-    )
-    assert ctx.computed_utility >= _WALKAWAY_UTILITY - 1e-9, (
-        f"Final round target utility must not go below walk-away {_WALKAWAY_UTILITY}"
+    # Final round: progress = 1.0, so target equals walk-away utility.
+    # With a utility floor of 0.15, the final target is 0.15.
+    assert abs(ctx.computed_utility - _WALKAWAY_UTILITY) < 0.05, (
+        f"Final round target utility should be near walk-away "
+        f"({_WALKAWAY_UTILITY}), got {ctx.computed_utility}"
     )
