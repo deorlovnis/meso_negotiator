@@ -1,0 +1,109 @@
+#:schema https://mise.jdx.dev/schema/mise.toml.json
+
+[env]
+_.path = ["./scripts"]
+
+[tools]
+python = "3.12"
+uv = "latest"
+ruff = "latest"
+node = "22"
+bun = "latest"
+
+[tasks.setup]
+description = "Create venv and install dependencies"
+run = "uv sync"
+
+[tasks.lint]
+description = "Run all linters"
+depends = ["lint:python", "lint:js"]
+
+[tasks."lint:python"]
+description = "Lint Python files"
+run = "ruff check back/"
+
+[tasks."lint:js"]
+description = "Lint JavaScript/TypeScript files"
+run = "npx @biomejs/biome check front/"
+
+[tasks."lint:fix"]
+description = "Auto-fix all lint issues"
+depends = ["lint:fix:python", "lint:fix:js"]
+
+[tasks."lint:fix:python"]
+description = "Auto-fix Python lint issues"
+run = "ruff check --fix back/"
+
+[tasks."lint:fix:js"]
+description = "Auto-fix JS/TS lint issues"
+run = "npx @biomejs/biome check --fix front/"
+
+[tasks."lint:staged"]
+description = "Lint only staged files"
+run = """
+#!/usr/bin/env bash
+set -e
+
+PY_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+JS_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.js' '*.ts' '*.jsx' '*.tsx')
+
+if [ -z "$PY_FILES" ] && [ -z "$JS_FILES" ]; then
+  echo "No staged files to lint"
+  exit 0
+fi
+
+if [ -n "$PY_FILES" ]; then
+  echo "Linting Python..."
+  echo "$PY_FILES" | xargs ruff check
+fi
+
+if [ -n "$JS_FILES" ]; then
+  echo "Linting JavaScript/TypeScript..."
+  echo "$JS_FILES" | xargs npx @biomejs/biome check
+fi
+"""
+
+[tasks.format]
+description = "Auto-format all files"
+depends = ["format:python", "format:js"]
+
+[tasks."format:python"]
+description = "Format Python files with ruff"
+run = "ruff format back/"
+
+[tasks."format:js"]
+description = "Format JS/TS files with biome"
+run = "npx @biomejs/biome format --write front/"
+
+[tasks."format:check"]
+description = "Check formatting without writing"
+run = """
+#!/usr/bin/env bash
+set -e
+ruff format --check back/
+npx @biomejs/biome format front/
+"""
+
+[tasks.test]
+description = "Run all tests"
+run = "uv run pytest"
+
+[tasks.typecheck]
+description = "Run type checkers"
+run = """
+#!/usr/bin/env bash
+set -e
+uv run mypy back/
+npx tsc --noEmit 2>/dev/null || true
+"""
+
+[tasks.check]
+description = "Run all checks (lint + test)"
+depends = ["lint", "test"]
+
+[tasks."validate-commit-msg"]
+description = "Validate commit message against Conventional Commits"
+run = """
+#!/usr/bin/env bash
+python ~/.claude/skills/git-workflow/scripts/validate_message.py --file "$1"
+"""

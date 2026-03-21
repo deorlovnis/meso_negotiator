@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(mise:*)",
+      "Bash(python:*)",
+      "Bash(uv:*)",
+      "Bash(ruff:*)",
+      "Bash(node:*)",
+      "Bash(bun:*)",
+      "Bash(npx:*)",
+      "Bash(biome:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          "~/.claude/skills/git-workflow/scripts/validate_message.py"
+        ]
+      }
+    ]
+  }
+}
