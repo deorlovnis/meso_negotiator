@@ -11,8 +11,13 @@ node = "22"
 bun = "latest"
 
 [tasks.setup]
-description = "Create venv and install dependencies"
-run = "uv sync"
+description = "Install all dependencies (Python + Node)"
+run = """
+#!/usr/bin/env bash
+set -e
+uv sync
+cd front && npm install
+"""
 
 [tasks.lint]
 description = "Run all linters"
@@ -100,6 +105,24 @@ npx tsc --noEmit 2>/dev/null || true
 [tasks.check]
 description = "Run all checks (lint + test)"
 depends = ["lint", "test"]
+
+[tasks.dev]
+description = "Start backend and frontend dev servers"
+run = """
+#!/usr/bin/env bash
+trap 'kill 0' EXIT
+uv run uvicorn back.server:create_app --factory --port 8000 &
+cd front && npx vite --port 5173 &
+wait
+"""
+
+[tasks."dev:stop"]
+description = "Stop backend and frontend dev servers"
+run = """
+#!/usr/bin/env bash
+pkill -f 'uvicorn back.server' 2>/dev/null && echo "Backend stopped" || echo "Backend not running"
+pkill -f 'vite --port 5173' 2>/dev/null && echo "Frontend stopped" || echo "Frontend not running"
+"""
 
 [tasks."validate-commit-msg"]
 description = "Validate commit message against Conventional Commits"

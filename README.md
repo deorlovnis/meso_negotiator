@@ -1,2 +1,52 @@
 # meso_negotiator
-this a demo project for jobfair/pactum challange
+
+Meso-level negotiation assistant that generates equal-utility offer cards using MAUT, Boulware concession curves, and opponent preference learning. Built for the Kood/Jobfair Pactum challenge.
+
+## Prerequisites
+
+- [mise](https://mise.jdx.dev/) (manages Python 3.12, Node 22, and task runner)
+
+## Setup
+
+```sh
+mise trust
+mise install
+mise run setup        # installs Python + Node dependencies
+```
+
+## Running
+
+```sh
+mise run dev
+```
+
+This starts both the backend (port 8000) and frontend (port 5173) in one command. Open http://localhost:5173 to use the app.
+
+To stop both servers:
+
+```sh
+mise run dev:stop
+```
+
+The backend seeds a demo negotiation automatically. After reaching a terminal state (deal agreed or no deal), use the "Reset demo" button to start over.
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `mise run dev` | Start backend + frontend dev servers |
+| `mise run dev:stop` | Stop both dev servers |
+| `mise run setup` | Install all dependencies (Python + Node) |
+| `mise run test` | Run pytest |
+| `mise run lint` | Run all linters (ruff + biome) |
+| `mise run lint:fix` | Auto-fix lint issues |
+| `mise run format` | Auto-format all files |
+| `mise run typecheck` | Run mypy + tsc |
+| `mise run check` | Lint + test |
+
+## Stack
+
+- **Backend** -- Python 3.12, FastAPI, clean architecture (domain/application/infrastructure)
+- **Frontend** -- React 19, TypeScript, Tailwind CSS, Vite
+- **Linting** -- ruff (Python), biome (JS/TS)
+- **Testing** -- pytest (unit + BDD + API integration)
