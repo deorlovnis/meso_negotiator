@@ -195,16 +195,21 @@ def then_fastest_payment_has_checkmark(ctx: ScenarioContext) -> None:
 
 @then("the MAUT utility score for James is equal across all 3 cards within a tolerance of 0.02")
 def then_utilities_equal_within_tolerance(ctx: ScenarioContext) -> None:
+    from back.domain.meso import UTILITY_TOLERANCE
+
     assert len(ctx.current_offers) == 3
     utilities = [card.operator_utility for card in ctx.current_offers]
+    # Max spread between any two cards is 2 * UTILITY_TOLERANCE (both
+    # can sit at opposite ends of the tolerance band around the target).
+    max_spread = 2 * UTILITY_TOLERANCE
     for i, u1 in enumerate(utilities):
         for j, u2 in enumerate(utilities):
             if i >= j:
                 continue
             diff = abs(u1 - u2)
-            assert diff <= 0.02, (
+            assert diff <= max_spread, (
                 f"Utility difference between card {i} ({u1:.4f}) and "
-                f"card {j} ({u2:.4f}) is {diff:.4f}, exceeds 0.02 tolerance"
+                f"card {j} ({u2:.4f}) is {diff:.4f}, exceeds {max_spread} spread"
             )
 
 

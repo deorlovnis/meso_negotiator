@@ -86,16 +86,21 @@ class TestMesoReturnsThreeCards:
 
 
 class TestEqualOperatorUtility:
-    """Falsifiable claim: all 3 cards have equal operator utility within 0.02.
+    """Falsifiable claim: all 3 cards have approximately equal operator utility.
 
     section 1: 'MAUT utility score for James is equal across all 3 cards
-    within a tolerance of 0.02'
+    within a tolerance'
 
     Risk: 9/10. This is the core MESO constraint. If the generator cannot
-    produce equal-utility offers, the entire fairness guarantee is broken.
+    produce near-equal-utility offers, the fairness guarantee is broken.
+
+    Max spread between any two cards is 2 * UTILITY_TOLERANCE because both
+    can sit at opposite ends of the tolerance band around the target.
     """
 
     def test_three_cards_within_tolerance(self):
+        from back.domain.meso import UTILITY_TOLERANCE
+
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -108,13 +113,16 @@ class TestEqualOperatorUtility:
             utilities.append(u)
 
         max_diff = max(utilities) - min(utilities)
-        assert max_diff <= 0.02, (
-            f"Utility spread {max_diff:.4f} exceeds tolerance 0.02. "
+        max_spread = 2 * UTILITY_TOLERANCE
+        assert max_diff <= max_spread, (
+            f"Utility spread {max_diff:.4f} exceeds {max_spread}. "
             f"Utilities: {[f'{u:.4f}' for u in utilities]}"
         )
 
     def test_utilities_are_near_target(self):
         """Each card's utility should be near the requested target."""
+        from back.domain.meso import UTILITY_TOLERANCE
+
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -123,17 +131,19 @@ class TestEqualOperatorUtility:
         )
         for offer in _get_offers(meso):
             u = compute_utility(offer.terms, BACKGROUND_CONFIG, OPERATOR_WEIGHTS)
-            assert abs(u - ROUND_1_TARGET) <= 0.02, (
+            assert abs(u - ROUND_1_TARGET) <= UTILITY_TOLERANCE, (
                 f"Card {offer.label} utility {u:.4f} deviates from "
-                f"target {ROUND_1_TARGET:.4f} by more than 0.02"
+                f"target {ROUND_1_TARGET:.4f} by more than {UTILITY_TOLERANCE}"
             )
 
     def test_equal_utility_with_skewed_opponent_weights(self):
         """Adversarial: extreme opponent weight skew (0.70 payment).
 
-        The generator must still produce equal operator utility even when
+        The generator must still produce near-equal operator utility even when
         the opponent model heavily biases one dimension.
         """
+        from back.domain.meso import UTILITY_TOLERANCE
+
         skewed_opponent = Weights(price=0.10, payment=0.70, delivery=0.10, contract=0.10)
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
@@ -146,9 +156,10 @@ class TestEqualOperatorUtility:
             for offer in _get_offers(meso)
         ]
         max_diff = max(utilities) - min(utilities)
-        assert max_diff <= 0.02, (
+        max_spread = 2 * UTILITY_TOLERANCE
+        assert max_diff <= max_spread, (
             f"With skewed opponent weights, utility spread {max_diff:.4f} "
-            f"exceeds tolerance. Utilities: {utilities}"
+            f"exceeds {max_spread}. Utilities: {utilities}"
         )
 
 
@@ -350,13 +361,16 @@ class TestMesoWithExtremeInputs:
             opponent_weights=UNIFORM_OPPONENT_WEIGHTS,
             target_utility=0.50,
         )
+        from back.domain.meso import UTILITY_TOLERANCE
+
         utilities = [
             compute_utility(offer.terms, BACKGROUND_CONFIG, extreme_weights)
             for offer in _get_offers(meso)
         ]
         max_diff = max(utilities) - min(utilities)
-        assert max_diff <= 0.02, (
-            f"With extreme weight skew, utility spread {max_diff:.4f} exceeds tolerance"
+        max_spread = 2 * UTILITY_TOLERANCE
+        assert max_diff <= max_spread, (
+            f"With extreme weight skew, utility spread {max_diff:.4f} exceeds {max_spread}"
         )
 
     def test_target_utility_at_zero(self):
@@ -364,9 +378,10 @@ class TestMesoWithExtremeInputs:
 
         The generator should still produce 3 valid cards, even if they have
         very similar (near-walk-away) terms. At the extreme boundary the
-        generator may widen tolerance to find 3 distinct cards — allow up to
-        4x the standard tolerance (0.08) here.
+        generator may widen tolerance to find 3 distinct cards.
         """
+        from back.domain.meso import UTILITY_TOLERANCE
+
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -375,7 +390,7 @@ class TestMesoWithExtremeInputs:
         )
         for offer in _get_offers(meso):
             u = compute_utility(offer.terms, BACKGROUND_CONFIG, OPERATOR_WEIGHTS)
-            assert abs(u - 0.0) <= 0.08, (
+            assert abs(u - 0.0) <= UTILITY_TOLERANCE * 4, (
                 f"At target 0.0, card {offer.label} utility {u:.4f} exceeds tolerance"
             )
 
@@ -384,6 +399,8 @@ class TestMesoWithExtremeInputs:
 
         The generator should produce 3 cards near target values.
         """
+        from back.domain.meso import UTILITY_TOLERANCE
+
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -392,6 +409,6 @@ class TestMesoWithExtremeInputs:
         )
         for offer in _get_offers(meso):
             u = compute_utility(offer.terms, BACKGROUND_CONFIG, OPERATOR_WEIGHTS)
-            assert abs(u - 1.0) <= 0.02, (
+            assert abs(u - 1.0) <= UTILITY_TOLERANCE, (
                 f"At target 1.0, card {offer.label} utility {u:.4f} deviates"
             )

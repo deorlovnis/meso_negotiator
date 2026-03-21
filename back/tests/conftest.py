@@ -32,7 +32,7 @@ from back.domain.types import (
 # Concession curve defaults matching ARCHITECTURE.md
 _DEFAULT_BETA = 2.0
 _OPENING_UTILITY = 1.0
-_WALKAWAY_UTILITY = 0.15
+_WALKAWAY_UTILITY = 0.35
 
 
 # ---------------------------------------------------------------------------

@@ -31,7 +31,7 @@ _DEFAULT_BETA = 2.0
 # Opening utility: offer starts at operator's maximum possible utility
 _OPENING_UTILITY = 1.0
 # Walkaway utility: minimum acceptable utility (floor prevents card collapse)
-_WALKAWAY_UTILITY = 0.15
+_WALKAWAY_UTILITY = 0.35
 
 
 @dataclass(frozen=True)

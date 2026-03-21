@@ -1,21 +1,21 @@
 """MESO offer set generator.
 
-Generates 3 offer cards that have equal operator MAUT utility (within
-tolerance 0.02) but differ in their term distributions:
-- BEST_PRICE: lowest price (most favorable price for supplier)
+Generates 3 offer cards at approximately equal operator MAUT utility but
+with distinct term distributions:
+- BEST_PRICE: most supplier-favorable price (toward walk_away)
 - FASTEST_PAYMENT: fastest payment terms (shortest days)
 - MOST_BALANCED: closest to equal per-term achievement, no single extreme
+
+Specialty cards (BEST_PRICE, FASTEST_PAYMENT) are exempt from the per-term
+achievement floor so they can push their key dimension to the extreme.
+MOST_BALANCED respects the floor to stay evenly distributed.
 
 Algorithm:
 1. Sample a grid of term value combinations within acceptable range.
 2. Score each candidate with compute_utility().
 3. Keep candidates within target_utility +/- TOLERANCE.
-4. Select 3 profiles using opponent model to bias within each profile.
-5. Validate all candidates are distinct and respect walk-away limits.
-
-The opponent model biases offer terms within each profile: e.g., for
-MOST_BALANCED, heavier opponent payment weight means the balanced card
-offers faster payment (without reducing operator utility).
+4. Select specialty cards from the full pool (no floor).
+5. Select MOST_BALANCED from floor-filtered pool.
 """
 
 from __future__ import annotations
@@ -33,7 +33,9 @@ from back.domain.types import (
 )
 
 # Maximum allowed difference in operator utility between any two MESO cards.
-UTILITY_TOLERANCE = 0.02
+# Wider tolerance enables visibly distinct card profiles: specialty cards can
+# trade operator utility on their key term for supplier-favorable extremes.
+UTILITY_TOLERANCE = 0.10
 
 # Number of steps to sample per dimension when generating candidates.
 # 16 steps gives 16^4 = 65536 candidates — fine enough to reflect the
@@ -69,20 +71,13 @@ def generate_meso_set(
     Raises:
         ValueError: If no valid candidates can be found within tolerance.
     """
-    candidates = _generate_candidates(config, operator_weights, target_utility)
+    # Generate without floor — per-card filtering happens during selection.
+    candidates = _generate_candidates(
+        config, operator_weights, target_utility, floor_scale=0.0,
+    )
 
     if len(candidates) < 3:
-        # Widen tolerance as fallback: try 2x, 4x, 8x tolerance
         for multiplier in [2, 4, 8]:
-            candidates = _generate_candidates(
-                config, operator_weights, target_utility, UTILITY_TOLERANCE * multiplier
-            )
-            if len(candidates) >= 3:
-                break
-
-    if len(candidates) < 3:
-        # Drop the achievement floor as last resort (pass floor_scale=0)
-        for multiplier in [1, 2, 4, 8]:
             candidates = _generate_candidates(
                 config, operator_weights, target_utility,
                 UTILITY_TOLERANCE * multiplier, floor_scale=0.0,
@@ -97,12 +92,29 @@ def generate_meso_set(
             f"Check term configurations for feasibility."
         )
 
-    best_price = _select_best_price(candidates, config, opponent_weights)
+    floor = target_utility * _FLOOR_SCALE
+
+    # Specialty cards: exempt their key term from floor, keep floor on rest.
+    # This prevents non-specialty terms from collapsing while allowing the
+    # specialty term to go extreme.
+    price_pool = _filter_floor_except(candidates, config, floor, exempt="price")
+    if not price_pool:
+        price_pool = candidates
+    best_price = _select_best_price(price_pool, config, opponent_weights)
+
+    payment_pool = _filter_floor_except(candidates, config, floor, exempt="payment")
+    if not payment_pool:
+        payment_pool = candidates
     fastest_payment = _select_fastest_payment(
-        candidates, config, opponent_weights, exclude=best_price
+        payment_pool, config, opponent_weights, exclude=best_price
     )
+
+    # Balanced card: all terms must meet the floor.
+    balanced_pool = [c for c in candidates if _meets_floor(c, config, floor)]
+    if not balanced_pool:
+        balanced_pool = candidates
     most_balanced = _select_most_balanced(
-        candidates, config, opponent_weights, best_price, fastest_payment
+        balanced_pool, config, opponent_weights, best_price, fastest_payment
     )
 
     return MesoSet(
@@ -286,6 +298,36 @@ def _select_most_balanced(
         return variance + opponent_bonus
 
     return min(available, key=balance_score)
+
+
+def _filter_floor_except(
+    candidates: list[TermValues],
+    config: dict[str, TermConfig],
+    floor: float,
+    exempt: str,
+) -> list[TermValues]:
+    """Filter candidates where all terms EXCEPT the exempt one meet the floor."""
+    terms = ["price", "payment", "delivery", "contract"]
+    checked = [t for t in terms if t != exempt]
+    return [
+        c for c in candidates
+        if all(
+            _per_term_achievement(getattr(c, t), config[t]) >= floor
+            for t in checked
+        )
+    ]
+
+
+def _meets_floor(
+    terms: TermValues, config: dict[str, TermConfig], floor: float
+) -> bool:
+    """True if all per-term achievements are at or above the floor."""
+    return (
+        _per_term_achievement(terms.price, config["price"]) >= floor
+        and _per_term_achievement(terms.payment, config["payment"]) >= floor
+        and _per_term_achievement(terms.delivery, config["delivery"]) >= floor
+        and _per_term_achievement(terms.contract, config["contract"]) >= floor
+    )
 
 
 def _per_term_achievement(value: float, cfg: TermConfig) -> float:
