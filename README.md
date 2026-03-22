@@ -14,6 +14,18 @@ mise install
 mise run setup        # installs Python + Node dependencies
 ```
 
+### Windows
+
+Most tasks (`setup`, `lint`, `test`, `format`, `typecheck`, `check`) work natively on Windows. The `dev` and `dev:stop` tasks require bash (Git Bash or WSL).
+
+To start servers manually on Windows:
+
+```powershell
+uv run uvicorn back.server:create_app --factory --port 8000
+# in a separate terminal:
+cd front; npx vite --port 5173
+```
+
 ## Running
 
 ```sh

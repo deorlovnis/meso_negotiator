@@ -10,14 +10,18 @@ ruff = "latest"
 node = "22"
 bun = "latest"
 
+[tasks."setup:python"]
+description = "Install Python dependencies"
+run = "uv sync"
+
+[tasks."setup:node"]
+description = "Install Node dependencies"
+dir = "front"
+run = "npm install"
+
 [tasks.setup]
 description = "Install all dependencies (Python + Node)"
-run = """
-#!/usr/bin/env bash
-set -e
-uv sync
-cd front && npm install
-"""
+depends = ["setup:python", "setup:node"]
 
 [tasks.lint]
 description = "Run all linters"
@@ -82,25 +86,31 @@ run = "npx @biomejs/biome format --write front/"
 
 [tasks."format:check"]
 description = "Check formatting without writing"
-run = """
-#!/usr/bin/env bash
-set -e
-ruff format --check back/
-npx @biomejs/biome format front/
-"""
+depends = ["format:check:python", "format:check:js"]
+
+[tasks."format:check:python"]
+description = "Check Python formatting"
+run = "ruff format --check back/"
+
+[tasks."format:check:js"]
+description = "Check JS/TS formatting"
+run = "npx @biomejs/biome format front/"
 
 [tasks.test]
 description = "Run all tests"
 run = "uv run pytest"
 
+[tasks."typecheck:python"]
+description = "Run mypy"
+run = "uv run mypy back/"
+
+[tasks."typecheck:js"]
+description = "Run tsc"
+run = "npx tsc --noEmit"
+
 [tasks.typecheck]
 description = "Run type checkers"
-run = """
-#!/usr/bin/env bash
-set -e
-uv run mypy back/
-npx tsc --noEmit 2>/dev/null || true
-"""
+depends = ["typecheck:python", "typecheck:js"]
 
 [tasks.check]
 description = "Run all checks (lint + test)"
