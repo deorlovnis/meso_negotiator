@@ -1,0 +1,17 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: back/Dockerfile
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: front
+    ports:
+      - "3000:80"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
