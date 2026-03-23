@@ -1,8 +1,12 @@
 """FastAPI dependency providers.
 
 Wires InMemoryNegotiationRepository as a process-level singleton and
-provides factory functions for each use case so that route handlers
-depend only on application interfaces, never on infrastructure directly.
+provides factory functions for each use case. Route handlers depend only
+on application interfaces, never on infrastructure directly.
+
+RepoDep is typed as NegotiationRepository (the protocol), not the concrete
+InMemoryNegotiationRepository. This satisfies the DIP: high-level routes
+depend on the abstract interface, not the low-level implementation.
 """
 
 from typing import Annotated
@@ -13,6 +17,8 @@ from back.application.agree import AgreeUseCase
 from back.application.end_negotiation import EndNegotiationUseCase
 from back.application.get_offers import GetOffersUseCase
 from back.application.improve import ImproveUseCase
+from back.application.ports import NegotiationRepository
+from back.application.reset import ResetUseCase
 from back.application.secure import SecureUseCase
 from back.infrastructure.memory_repo import InMemoryNegotiationRepository
 
@@ -20,12 +26,12 @@ from back.infrastructure.memory_repo import InMemoryNegotiationRepository
 _repo = InMemoryNegotiationRepository()
 
 
-def get_repo() -> InMemoryNegotiationRepository:
-    """Return the singleton InMemoryNegotiationRepository."""
+def get_repo() -> NegotiationRepository:
+    """Return the singleton NegotiationRepository."""
     return _repo
 
 
-RepoDep = Annotated[InMemoryNegotiationRepository, Depends(get_repo)]
+RepoDep = Annotated[NegotiationRepository, Depends(get_repo)]
 
 
 def get_offers_use_case(repo: RepoDep) -> GetOffersUseCase:
@@ -53,6 +59,11 @@ def get_end_negotiation_use_case(repo: RepoDep) -> EndNegotiationUseCase:
     return EndNegotiationUseCase(repo)
 
 
+def get_reset_use_case(repo: RepoDep) -> ResetUseCase:
+    """Construct ResetUseCase with injected repository."""
+    return ResetUseCase(repo)
+
+
 GetOffersDep = Annotated[GetOffersUseCase, Depends(get_offers_use_case)]
 AgreeDep = Annotated[AgreeUseCase, Depends(get_agree_use_case)]
 SecureDep = Annotated[SecureUseCase, Depends(get_secure_use_case)]
@@ -60,3 +71,4 @@ ImproveDep = Annotated[ImproveUseCase, Depends(get_improve_use_case)]
 EndNegotiationDep = Annotated[
     EndNegotiationUseCase, Depends(get_end_negotiation_use_case)
 ]
+ResetDep = Annotated[ResetUseCase, Depends(get_reset_use_case)]

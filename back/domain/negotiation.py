@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from back.domain.exceptions import NegotiationError
 from back.domain.types import (
     CardLabel,
     MesoSet,
@@ -36,9 +37,9 @@ from back.domain.types import (
 if TYPE_CHECKING:
     from back.domain.opponent_model import OpponentModel
 
-
-class NegotiationError(Exception):
-    """Raised when a state transition or action is invalid."""
+# Re-exported for backward compatibility: existing code that does
+# `from back.domain.negotiation import NegotiationError` continues to work.
+__all__ = ["Negotiation", "NegotiationError"]
 
 
 @dataclass

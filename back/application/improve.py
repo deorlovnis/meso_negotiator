@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from back.application.get_offers import OffersDTO, _build_actions, _build_cards
+from back.config import get_settings
 from back.domain import concession as concession_module
 from back.domain import meso as meso_module
 from back.domain.negotiation import NegotiationError
@@ -22,10 +23,6 @@ from back.domain.negotiation import NegotiationError
 if TYPE_CHECKING:
     from back.application.ports import NegotiationRepository
     from back.domain.types import CardLabel
-
-_DEFAULT_BETA = 2.0
-_OPENING_UTILITY = 1.0
-_WALKAWAY_UTILITY = 0.35
 
 
 class ImproveUseCase:
@@ -59,12 +56,13 @@ class ImproveUseCase:
         negotiation.improve(label)
 
         # Generate new MESO set with updated opponent weights + concession curve
+        settings = get_settings()
         target = concession_module.target_utility(
             round=negotiation.round,
             max_rounds=negotiation.max_rounds,
-            opening_utility=_OPENING_UTILITY,
-            walkaway_utility=_WALKAWAY_UTILITY,
-            beta=_DEFAULT_BETA,
+            opening_utility=settings.opening_utility,
+            walkaway_utility=settings.walkaway_utility,
+            beta=settings.default_beta,
         )
         meso_set = meso_module.generate_meso_set(
             config=negotiation.config,
