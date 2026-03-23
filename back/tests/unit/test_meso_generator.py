@@ -44,6 +44,7 @@ BACKGROUND_CONFIG = {
 
 OPERATOR_WEIGHTS = Weights(price=0.40, payment=0.25, delivery=0.20, contract=0.15)
 UNIFORM_OPPONENT_WEIGHTS = Weights(price=0.25, payment=0.25, delivery=0.25, contract=0.25)
+MARIA_WEIGHTS = Weights(price=0.30, payment=0.35, delivery=0.15, contract=0.20)
 
 # Target utility at round 1 with the corrected formula: progress = (1-1)/(5-1) = 0
 # so target = walkaway + (opening - walkaway) * 1.0 = opening = 1.0.
@@ -412,3 +413,178 @@ class TestMesoWithExtremeInputs:
             assert abs(u - 1.0) <= UTILITY_TOLERANCE, (
                 f"At target 1.0, card {offer.label} utility {u:.4f} deviates"
             )
+
+
+class TestLogrollingProducesDistinctOffers:
+    """Falsifiable claim: MESO logrolling produces genuine tradeoff structure.
+
+    Error category: Logic errors -- the cards should reflect logrolling, where
+    each specialty card wins on its key dimension but pays for it on others.
+
+    Risk: 9/10. If cards are near-identical, the MESO presentation is cosmetic
+    rather than substantive. The operator sees 3 "choices" that are really one
+    choice with rounding noise. This defeats the core value proposition.
+
+    Target behavior at round 5 (target_utility=0.35, MARIA_WEIGHTS):
+    - BEST_PRICE:      best price (highest, toward supplier walk-away),
+                        BUT worst payment (highest days, toward operator opening=90)
+    - FASTEST_PAYMENT:  best payment (lowest days, toward supplier walk-away=30),
+                        BUT worst price (lowest, toward operator target=12.50)
+    - MOST_BALANCED:    middle on everything, no single extreme
+
+    Term directions:
+    - Price:    walk_away=14.50 > target=12.50, supplier prefers HIGHER.
+    - Payment:  walk_away=30 < opening=90, supplier prefers LOWER days.
+    - Delivery: opening=7, target=10, walk_away=14. Operator prefers lower.
+    - Contract: opening=6, target=12, walk_away=24. Operator prefers lower.
+    """
+
+    # Round 5 target: target_utility = 0.35
+    _TARGET = 0.35
+
+    def _generate(self) -> MesoSet:
+        return generate_meso_set(
+            config=BACKGROUND_CONFIG,
+            operator_weights=OPERATOR_WEIGHTS,
+            opponent_weights=MARIA_WEIGHTS,
+            target_utility=self._TARGET,
+        )
+
+    def _format_card(self, offer) -> str:
+        """Format a card's terms for diagnostic assertion messages."""
+        t = offer.terms
+        return (
+            f"{offer.label.value}: "
+            f"price=${t.price:.2f}/k, "
+            f"payment=Net {t.payment:.0f}, "
+            f"delivery={t.delivery:.0f}d, "
+            f"contract={t.contract:.0f}mo"
+        )
+
+    def test_best_price_card_sacrifices_payment(self):
+        """The BEST_PRICE card should have the WORST payment among all 3 cards.
+
+        Logrolling claim: you get the best price but pay for it with the
+        slowest payment (highest days). "Worst payment for supplier" means
+        highest days, toward operator's opening of 90.
+
+        GIVEN a MESO set generated at round 5 (target_utility=0.35) with
+              Maria's inferred weights
+        WHEN  I compare the payment term across all 3 cards
+        THEN  the BEST_PRICE card has the highest payment days
+              (worst for supplier, best for operator on payment)
+        """
+        meso = self._generate()
+        offers = _get_offers(meso)
+
+        best_price_payment = meso.best_price.terms.payment
+        other_payments = [
+            o.terms.payment for o in offers if o.label != CardLabel.BEST_PRICE
+        ]
+        max_other_payment = max(other_payments)
+
+        card_summary = "\n    ".join(self._format_card(o) for o in offers)
+        assert best_price_payment >= max_other_payment, (
+            f"BEST_PRICE card should have the WORST (highest) payment days "
+            f"among all cards, proving a logrolling tradeoff.\n"
+            f"  BEST_PRICE payment: Net {best_price_payment:.0f}\n"
+            f"  Other payments: {[f'Net {p:.0f}' for p in other_payments]}\n"
+            f"  All cards:\n    {card_summary}"
+        )
+
+    def test_fastest_payment_card_sacrifices_price(self):
+        """The FASTEST_PAYMENT card should have the WORST price among all 3 cards.
+
+        Logrolling claim: you get the fastest payment but pay with a worse
+        price. "Worst price for supplier" means lowest price (toward
+        operator's target/opening of 11.50-12.50).
+
+        GIVEN a MESO set generated at round 5 (target_utility=0.35) with
+              Maria's inferred weights
+        WHEN  I compare the price term across all 3 cards
+        THEN  the FASTEST_PAYMENT card has the lowest price
+              (worst for supplier, best for operator on price)
+        """
+        meso = self._generate()
+        offers = _get_offers(meso)
+
+        fastest_payment_price = meso.fastest_payment.terms.price
+        other_prices = [
+            o.terms.price for o in offers if o.label != CardLabel.FASTEST_PAYMENT
+        ]
+        min_other_price = min(other_prices)
+
+        card_summary = "\n    ".join(self._format_card(o) for o in offers)
+        assert fastest_payment_price <= min_other_price, (
+            f"FASTEST_PAYMENT card should have the WORST (lowest) price "
+            f"among all cards, proving a logrolling tradeoff.\n"
+            f"  FASTEST_PAYMENT price: ${fastest_payment_price:.2f}/k\n"
+            f"  Other prices: {[f'${p:.2f}/k' for p in other_prices]}\n"
+            f"  All cards:\n    {card_summary}"
+        )
+
+    def test_cards_span_meaningful_range_at_round_5(self):
+        """At least one term should span > 30% of its full range across cards.
+
+        This proves the cards are visibly distinct, not clustered together
+        with negligible differences.
+
+        GIVEN a MESO set generated at round 5 (target_utility=0.35) with
+              Maria's inferred weights
+        WHEN  I compute the span (max - min) for each term across all 3 cards
+        THEN  at least one term spans more than 30% of its full negotiable
+              range (walk_away to opening)
+
+        Full ranges:
+        - Price:    |14.50 - 11.50| = 3.00,  30% = 0.90
+        - Payment:  |90 - 30|      = 60.00, 30% = 18.0 days
+        - Delivery: |14 - 7|       = 7.00,  30% = 2.1 days
+        - Contract: |24 - 6|       = 18.00, 30% = 5.4 months
+        """
+        meso = self._generate()
+        offers = _get_offers(meso)
+
+        full_ranges = {
+            "price": abs(
+                BACKGROUND_CONFIG["price"].walk_away
+                - BACKGROUND_CONFIG["price"].opening
+            ),
+            "payment": abs(
+                BACKGROUND_CONFIG["payment"].walk_away
+                - BACKGROUND_CONFIG["payment"].opening
+            ),
+            "delivery": abs(
+                BACKGROUND_CONFIG["delivery"].walk_away
+                - BACKGROUND_CONFIG["delivery"].opening
+            ),
+            "contract": abs(
+                BACKGROUND_CONFIG["contract"].walk_away
+                - BACKGROUND_CONFIG["contract"].opening
+            ),
+        }
+        threshold_fraction = 0.30
+
+        spans: dict[str, float] = {}
+        for term_name in ["price", "payment", "delivery", "contract"]:
+            values = [getattr(o.terms, term_name) for o in offers]
+            spans[term_name] = max(values) - min(values)
+
+        any_above_threshold = any(
+            spans[term] > full_ranges[term] * threshold_fraction
+            for term in spans
+        )
+
+        card_summary = "\n    ".join(self._format_card(o) for o in offers)
+        span_details = "\n    ".join(
+            f"{term}: span={spans[term]:.2f}, "
+            f"full_range={full_ranges[term]:.2f}, "
+            f"30%_threshold={full_ranges[term] * threshold_fraction:.2f}, "
+            f"covers={spans[term] / full_ranges[term] * 100:.1f}%"
+            for term in spans
+        )
+        assert any_above_threshold, (
+            f"No term spans more than 30% of its full range. "
+            f"Cards are not visibly distinct.\n"
+            f"  Spans:\n    {span_details}\n"
+            f"  All cards:\n    {card_summary}"
+        )

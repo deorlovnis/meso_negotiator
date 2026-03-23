@@ -15,7 +15,11 @@ Algorithm:
 2. Score each candidate with compute_utility().
 3. Keep candidates within target_utility +/- TOLERANCE.
 4. Select specialty cards from the full pool (no floor).
-5. Select MOST_BALANCED from floor-filtered pool.
+5. Among tied specialty candidates (same extremal primary value), rank by
+   opponent-cost scoring (logrolling tiebreaker): pick the candidate that
+   imposes the highest weighted cost on the supplier's non-specialty
+   priorities, creating a genuine tradeoff (Bazerman & Neale logrolling).
+6. Select MOST_BALANCED from floor-filtered pool.
 """
 
 from __future__ import annotations
@@ -225,7 +229,7 @@ def _select_best_price(
 
     # Tiebreak: prefer fastest payment (secondary signal)
     return _select_by_opponent_secondary(
-        best_candidates, opponent_weights, primary_term="price"
+        best_candidates, opponent_weights, primary_term="price", config=config
     )
 
 
@@ -250,7 +254,7 @@ def _select_fastest_payment(
     best_candidates = [c for c in pool if c.payment == best_payment_value]
 
     return _select_by_opponent_secondary(
-        best_candidates, opponent_weights, primary_term="payment"
+        best_candidates, opponent_weights, primary_term="payment", config=config
     )
 
 
@@ -290,10 +294,10 @@ def _select_most_balanced(
         # Bias toward opponent preferences: subtract small amount for
         # terms the supplier values (lower score = preferred)
         opponent_bonus = (
-            -0.001 * opponent_weights.price * _per_term_achievement(terms.price, config["price"])
-            - 0.001 * opponent_weights.payment * _per_term_achievement(terms.payment, config["payment"])
-            - 0.001 * opponent_weights.delivery * _per_term_achievement(terms.delivery, config["delivery"])
-            - 0.001 * opponent_weights.contract * _per_term_achievement(terms.contract, config["contract"])
+            -0.1 * opponent_weights.price * _per_term_achievement(terms.price, config["price"])
+            - 0.1 * opponent_weights.payment * _per_term_achievement(terms.payment, config["payment"])
+            - 0.1 * opponent_weights.delivery * _per_term_achievement(terms.delivery, config["delivery"])
+            - 0.1 * opponent_weights.contract * _per_term_achievement(terms.contract, config["contract"])
         )
         return variance + opponent_bonus
 
@@ -343,20 +347,46 @@ def _select_by_opponent_secondary(
     candidates: list[TermValues],
     opponent_weights: Weights,
     primary_term: str,
+    config: dict[str, TermConfig],
 ) -> TermValues:
-    """Among tied candidates on the primary dimension, pick the first.
+    """Among tied candidates on the primary dimension, select the one that
+    creates the sharpest logrolling tradeoff.
 
-    The primary dimension is already extremized (e.g., lowest price for
-    BEST_PRICE). Any remaining tie means all candidates are equally good
-    on that dimension, so we return the first candidate deterministically.
+    Logrolling (Bazerman & Neale): "you gain on your top priority, but pay
+    for it on your other priorities."  Among candidates with the same extreme
+    specialty value, select the one where the supplier's other high-priority
+    terms are worst for the supplier (highest operator achievement).
 
     Args:
         candidates: All candidates with the same extremal primary value.
-        opponent_weights: Inferred supplier weights (reserved for future use).
-        primary_term: Name of the already-extremized dimension (informational).
+        opponent_weights: Inferred supplier weights — drives which non-primary
+                          terms to push toward the operator's ideal.
+        primary_term: Name of the already-extremized dimension (excluded from
+                      the cost score).
+        config: Term configuration for computing per-term achievement.
 
     Returns:
-        First candidate (deterministic tiebreaker).
+        Candidate with highest opponent cost on non-primary terms.
     """
-    # opponent_weights and primary_term retained for future biased tiebreaking.
-    return candidates[0]
+    non_primary = [t for t in ("price", "payment", "delivery", "contract") if t != primary_term]
+
+    opponent_w = {
+        "price": opponent_weights.price,
+        "payment": opponent_weights.payment,
+        "delivery": opponent_weights.delivery,
+        "contract": opponent_weights.contract,
+    }
+
+    def opponent_cost(terms: TermValues) -> float:
+        """Higher = worse for supplier on their priorities.
+
+        Weighted sum of operator-side achievement on non-specialty terms,
+        weighted by the supplier's own priority weights.
+        Achievement 1.0 = at operator's ideal = worst for supplier.
+        """
+        return sum(
+            opponent_w[t] * _per_term_achievement(getattr(terms, t), config[t])
+            for t in non_primary
+        )
+
+    return max(candidates, key=opponent_cost)
