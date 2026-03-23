@@ -52,3 +52,9 @@ export interface EndResponse {
 export interface ResetResponse {
   status: string
 }
+
+export interface OfferDetail {
+  label: string
+  value: string
+  signal: Signal
+}

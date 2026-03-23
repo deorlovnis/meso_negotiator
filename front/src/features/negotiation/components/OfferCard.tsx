@@ -1,10 +1,5 @@
-type Signal = 'good' | 'neutral' | 'weak'
-
-interface OfferDetail {
-  label: string
-  value: string
-  signal: Signal
-}
+import { SIGNAL_COLOR } from '../constants'
+import type { OfferDetail } from '../types'
 
 interface OfferCardProps {
   title: string
@@ -16,12 +11,6 @@ interface OfferCardProps {
   onAgree: () => void
   onFallback: () => void
   onImprove: () => void
-}
-
-const signalColor: Record<Signal, string> = {
-  good: 'bg-emerald-400',
-  neutral: 'bg-amber-400',
-  weak: 'bg-red-400',
 }
 
 export function OfferCard({
@@ -64,7 +53,7 @@ export function OfferCard({
         {details.map((detail) => (
           <div key={detail.label} className="flex items-center gap-3">
             <span
-              className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${signalColor[detail.signal]}`}
+              className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${SIGNAL_COLOR[detail.signal]}`}
             />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
