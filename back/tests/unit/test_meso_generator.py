@@ -24,25 +24,15 @@ from __future__ import annotations
 
 from back.domain.maut import compute_utility
 from back.domain.meso import generate_meso_set
-from back.domain.types import (
-    CardLabel,
-    MesoSet,
-    TermConfig,
-    Weights,
-)
+from back.domain.types import CardLabel, MesoSet, Weights
+from back.tests.factories import make_config, make_weights
 
 # ---------------------------------------------------------------------------
 # Test data: the Background configuration from core-loop.feature
 # ---------------------------------------------------------------------------
 
-BACKGROUND_CONFIG = {
-    "price": TermConfig(opening=11.50, target=12.50, walk_away=14.50, weight=0.40),
-    "payment": TermConfig(opening=90, target=75, walk_away=30, weight=0.25),
-    "delivery": TermConfig(opening=7, target=10, walk_away=14, weight=0.20),
-    "contract": TermConfig(opening=6, target=12, walk_away=24, weight=0.15),
-}
-
-OPERATOR_WEIGHTS = Weights(price=0.40, payment=0.25, delivery=0.20, contract=0.15)
+BACKGROUND_CONFIG = make_config()
+OPERATOR_WEIGHTS = make_weights()
 UNIFORM_OPPONENT_WEIGHTS = Weights(price=0.25, payment=0.25, delivery=0.25, contract=0.25)
 MARIA_WEIGHTS = Weights(price=0.30, payment=0.35, delivery=0.15, contract=0.20)
 

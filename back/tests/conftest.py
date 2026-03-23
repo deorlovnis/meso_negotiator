@@ -8,15 +8,27 @@ fixtures that are resolved before the step body runs.
 
 Steps that appear empty are not stubs. Declaring a fixture as a
 parameter triggers it. The step body has nothing left to do.
+
+## Shared pytest fixtures (F7-F10)
+
+- client:          F7 — TestClient with fresh repo + dependency override
+- mock_repo:       F8 — MagicMock(spec=NegotiationRepository)
+- seeded_client:   F9 — client with a PENDING negotiation via factory
+- terminal_client: F10 — client pre-advanced to ACCEPTED state
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_bdd import given, parsers, then, when
+from starlette.testclient import TestClient
 
+from back.api.dependencies import get_repo
+from back.application.ports import NegotiationRepository
+from back.config import get_settings
 from back.domain.concession import target_utility
 from back.domain.maut import compute_utility
 from back.domain.meso import generate_meso_set
@@ -24,15 +36,97 @@ from back.domain.opponent_model import OpponentModel
 from back.domain.types import (
     CardLabel,
     MesoSet,
+    NegotiationState,
     TermConfig,
     TermValues,
     Weights,
 )
+from back.infrastructure.memory_repo import InMemoryNegotiationRepository
+from back.server import create_app
+from back.tests.factories import make_active_negotiation, make_negotiation
 
-# Concession curve defaults matching ARCHITECTURE.md
-_DEFAULT_BETA = 2.0
-_OPENING_UTILITY = 1.0
-_WALKAWAY_UTILITY = 0.35
+# ---------------------------------------------------------------------------
+# Shared pytest fixtures (F7-F10)
+# ---------------------------------------------------------------------------
+
+NEG_ID = "test-neg"
+
+
+def _make_test_client(
+    repo: InMemoryNegotiationRepository,
+) -> TestClient:
+    """Build a TestClient with the given repo overriding the DI singleton."""
+    app = create_app()
+    app.dependency_overrides[get_repo] = lambda: repo
+    return TestClient(app, raise_server_exceptions=False)
+
+
+@pytest.fixture()
+def client() -> TestClient:
+    """F7: TestClient with a fresh, isolated in-memory repo per test.
+
+    Seeds a PENDING negotiation with factory defaults so the API has a
+    negotiation to operate on. Overrides get_repo so the module-level
+    singleton is never touched.
+    """
+    fresh_repo = InMemoryNegotiationRepository()
+    neg = make_negotiation(neg_id=NEG_ID)
+    fresh_repo.save(neg)
+
+    return _make_test_client(fresh_repo)
+
+
+@pytest.fixture()
+def mock_repo() -> MagicMock:
+    """F8: MagicMock repo with the NegotiationRepository protocol shape.
+
+    Use this for isolated use-case unit tests where you control exactly
+    what the repo returns.
+
+    Example:
+        def test_something(mock_repo):
+            mock_repo.get.return_value = make_active_negotiation()
+            use_case = GetOffersUseCase(mock_repo)
+            result = use_case.execute("test-id")
+            mock_repo.save.assert_called_once()
+    """
+    return MagicMock(spec=NegotiationRepository)
+
+
+@pytest.fixture()
+def seeded_client() -> TestClient:
+    """F9: TestClient with a PENDING negotiation seeded via factory.
+
+    Identical to `client` but named explicitly for intent. The negotiation
+    is in PENDING state — first GET /offers will activate it.
+    """
+    fresh_repo = InMemoryNegotiationRepository()
+    neg = make_negotiation(neg_id=NEG_ID)
+    fresh_repo.save(neg)
+
+    return _make_test_client(fresh_repo)
+
+
+@pytest.fixture()
+def terminal_client() -> TestClient:
+    """F10: TestClient with a negotiation pre-advanced to ACCEPTED state.
+
+    The negotiation is terminal — all mutation endpoints should return 409.
+    """
+    fresh_repo = InMemoryNegotiationRepository()
+
+    neg = make_active_negotiation(neg_id=NEG_ID)
+    neg.agree(CardLabel.BEST_PRICE)
+    assert neg.state == NegotiationState.ACCEPTED
+    fresh_repo.save(neg)
+
+    return _make_test_client(fresh_repo)
+
+# Concession curve defaults — read from Settings (single source of truth)
+_settings = get_settings()
+_DEFAULT_BETA = _settings.default_beta
+_OPENING_UTILITY = _settings.opening_utility
+_WALKAWAY_UTILITY = _settings.walkaway_utility
 
 
 # ---------------------------------------------------------------------------

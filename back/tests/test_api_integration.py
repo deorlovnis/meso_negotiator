@@ -10,6 +10,10 @@ Error categories covered (STS Ch 1):
 - Interface errors: correct routing, parameter passing, card_label validation
 - Logic errors: state machine transitions, terminal-state enforcement
 - Data errors: is_first_visit flag, secured_offer persistence, actions_available
+
+Factory migration (F6): local _make_config/_seed_negotiation replaced with
+shared factories from back.tests.factories. Fixtures client and
+final_round_client now use conftest's _make_test_client pattern.
 """
 
 from __future__ import annotations
@@ -17,12 +21,10 @@ from __future__ import annotations
 import pytest
 from starlette.testclient import TestClient
 
-from back.dependencies import get_repo
-from back.domain.negotiation import Negotiation
-from back.domain.opponent_model import OpponentModel
-from back.domain.types import NegotiationState, TermConfig, Weights
+from back.api.dependencies import get_repo
 from back.infrastructure.memory_repo import InMemoryNegotiationRepository
 from back.server import create_app
+from back.tests.factories import make_negotiation
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -33,48 +35,20 @@ CARD_LABELS = ["BEST_PRICE", "MOST_BALANCED", "FASTEST_PAYMENT"]
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures (F6: migrated to shared factories)
 # ---------------------------------------------------------------------------
-
-
-def _make_config() -> dict[str, TermConfig]:
-    """Standard 4-term config matching the demo seed."""
-    return {
-        "price": TermConfig(opening=11.50, target=12.50, walk_away=14.50, weight=0.40),
-        "payment": TermConfig(opening=90, target=75, walk_away=30, weight=0.25),
-        "delivery": TermConfig(opening=7, target=10, walk_away=14, weight=0.20),
-        "contract": TermConfig(opening=6, target=12, walk_away=24, weight=0.15),
-    }
-
-
-def _seed_negotiation(
-    repo: InMemoryNegotiationRepository,
-    *,
-    neg_id: str = NEG_ID,
-    max_rounds: int = 5,
-) -> None:
-    """Seed a fresh PENDING negotiation into the given repo."""
-    negotiation = Negotiation(
-        id=neg_id,
-        state=NegotiationState.PENDING,
-        round=0,
-        max_rounds=max_rounds,
-        config=_make_config(),
-        operator_weights=Weights(price=0.40, payment=0.25, delivery=0.20, contract=0.15),
-        opponent_model=OpponentModel.uniform(),
-    )
-    repo.save(negotiation)
 
 
 @pytest.fixture()
 def client() -> TestClient:
     """TestClient with a fresh, isolated in-memory repo per test.
 
+    Uses make_negotiation from shared factories (F6 migration).
     Overrides the get_repo dependency so the module-level singleton is never
-    touched.  The lifespan seed runs against this fresh repo too.
+    touched.
     """
     fresh_repo = InMemoryNegotiationRepository()
-    _seed_negotiation(fresh_repo)
+    fresh_repo.save(make_negotiation(neg_id=NEG_ID))
 
     app = create_app()
     app.dependency_overrides[get_repo] = lambda: fresh_repo
@@ -85,7 +59,7 @@ def client() -> TestClient:
 def final_round_client() -> TestClient:
     """TestClient with a negotiation that has max_rounds=1 (already final)."""
     fresh_repo = InMemoryNegotiationRepository()
-    _seed_negotiation(fresh_repo, max_rounds=1)
+    fresh_repo.save(make_negotiation(neg_id=NEG_ID, max_rounds=1))
 
     app = create_app()
     app.dependency_overrides[get_repo] = lambda: fresh_repo
