@@ -274,27 +274,29 @@ class TestDistinctTermDistributions:
         """section 8: 'MOST BALANCED does not have the most extreme value
         on any single term'.
 
-        Most Balanced should not have the lowest price NOR the fastest payment.
+        At later rounds (where cards diverge), MOST_BALANCED should not hold
+        the unique extreme on any dimension.  At round 1 (utility 1.0) all
+        cards share opening values, so we test at a mid-round target instead.
         """
+        mid_round_target = 0.80
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
             opponent_weights=UNIFORM_OPPONENT_WEIGHTS,
-            target_utility=ROUND_1_TARGET,
+            target_utility=mid_round_target,
         )
         all_offers = _get_offers(meso)
         balanced = meso.most_balanced.terms
 
-        # Check price: balanced should not have the minimum price
-        min_price = min(o.terms.price for o in all_offers)
-        if balanced.price == min_price:
-            # It's OK if it ties, but it shouldn't be the unique minimum
-            other_at_min = sum(
+        # Check price: balanced should not have the unique maximum price
+        max_price = max(o.terms.price for o in all_offers)
+        if balanced.price == max_price:
+            other_at_max = sum(
                 1 for o in all_offers
-                if o.terms.price == min_price and o.label != CardLabel.MOST_BALANCED
+                if o.terms.price == max_price and o.label != CardLabel.MOST_BALANCED
             )
-            assert other_at_min > 0, (
-                "MOST_BALANCED should not be the unique card with lowest price"
+            assert other_at_max > 0, (
+                "MOST_BALANCED should not be the unique card with highest price"
             )
 
         # Check payment: balanced should not have the fastest payment

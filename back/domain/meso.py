@@ -37,9 +37,9 @@ from back.domain.types import (
 )
 
 # Maximum allowed difference in operator utility between any two MESO cards.
-# Wider tolerance enables visibly distinct card profiles: specialty cards can
-# trade operator utility on their key term for supplier-favorable extremes.
-UTILITY_TOLERANCE = 0.10
+# Must be tight enough that adjacent rounds don't overlap (smallest drop
+# between rounds is ~0.087), but wide enough for visible card differentiation.
+UTILITY_TOLERANCE = 0.02
 
 # Number of steps to sample per dimension when generating candidates.
 # 16 steps gives 16^4 = 65536 candidates — fine enough to reflect the
