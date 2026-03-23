@@ -28,13 +28,25 @@ cd front; npx vite --port 5173
 
 ## Running
 
+### Docker
+
+```sh
+docker compose up --build
+```
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+
+### Local dev servers
+
 ```sh
 mise run dev
 ```
 
-This starts both the backend (port 8000) and frontend (port 5173) in one command. Open http://localhost:5173 to use the app.
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
 
-To stop both servers:
+To stop:
 
 ```sh
 mise run dev:stop
