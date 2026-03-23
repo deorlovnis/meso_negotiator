@@ -40,10 +40,10 @@ CARD_LABELS = ["BEST_PRICE", "MOST_BALANCED", "FASTEST_PAYMENT"]
 def _make_config() -> dict[str, TermConfig]:
     """Standard 4-term config matching the demo seed."""
     return {
-        "price": TermConfig(opening=150.0, target=120.0, walk_away=100.0, weight=0.4),
-        "payment": TermConfig(opening=90, target=60, walk_away=30, weight=0.2),
-        "delivery": TermConfig(opening=21, target=14, walk_away=7, weight=0.2),
-        "contract": TermConfig(opening=6, target=12, walk_away=24, weight=0.2),
+        "price": TermConfig(opening=11.50, target=12.50, walk_away=14.50, weight=0.40),
+        "payment": TermConfig(opening=90, target=75, walk_away=30, weight=0.25),
+        "delivery": TermConfig(opening=7, target=10, walk_away=14, weight=0.20),
+        "contract": TermConfig(opening=6, target=12, walk_away=24, weight=0.15),
     }
 
 
@@ -60,7 +60,7 @@ def _seed_negotiation(
         round=0,
         max_rounds=max_rounds,
         config=_make_config(),
-        operator_weights=Weights(price=0.4, payment=0.2, delivery=0.2, contract=0.2),
+        operator_weights=Weights(price=0.40, payment=0.25, delivery=0.20, contract=0.15),
         opponent_model=OpponentModel.uniform(),
     )
     repo.save(negotiation)
