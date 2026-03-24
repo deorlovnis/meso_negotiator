@@ -84,6 +84,15 @@ class MesoSet:
 
 
 @dataclass(frozen=True)
+class SecuredOffer:
+    """A secured fallback offer with metadata for ranking."""
+
+    offer: Offer
+    round_secured: int
+    operator_utility: float
+
+
+@dataclass(frozen=True)
 class Weights:
     """Normalized 4-dimensional weight vector for MAUT.
 

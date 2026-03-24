@@ -1,26 +1,13 @@
-"""Pydantic request and response models for the MESO negotiation API.
+"""Pydantic request and response models — v2 API contract."""
 
-All schema classes live here, separate from route handlers. Route handlers
-import these types — no schema definitions inside routes.py.
+from typing import Self
 
-Naming conventions:
-- *Request:  inbound JSON body models
-- *Response: outbound JSON response models
-- ErrorResponse: error body for exception handlers
-"""
-
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from back.domain.types import CardLabel
 
-# ---------------------------------------------------------------------------
-# Shared sub-models
-# ---------------------------------------------------------------------------
-
 
 class TermsResponse(BaseModel):
-    """Display-formatted values for one offer's 4 terms."""
-
     price: str
     delivery: str
     payment: str
@@ -28,8 +15,6 @@ class TermsResponse(BaseModel):
 
 
 class SignalsResponse(BaseModel):
-    """Visual signal strength indicators for each term on a card."""
-
     price: str
     delivery: str
     payment: str
@@ -37,31 +22,33 @@ class SignalsResponse(BaseModel):
 
 
 class SecuredOfferResponse(BaseModel):
-    """The operator's fallback (secured) offer."""
-
+    rank: int
     label: str
     terms: TermsResponse
-
-
-# ---------------------------------------------------------------------------
-# Request models
-# ---------------------------------------------------------------------------
+    round_secured: int
 
 
 class CardLabelRequest(BaseModel):
-    """Body for routes that accept a card label selection."""
-
     card_label: CardLabel
 
 
-# ---------------------------------------------------------------------------
-# Response models
-# ---------------------------------------------------------------------------
+class ImproveRequest(BaseModel):
+    improve_term: str
+    trade_term: str | None = None
+
+
+class AgreeRequest(BaseModel):
+    card_label: CardLabel | None = None
+    secured_index: int | None = None
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> Self:
+        if (self.card_label is None) == (self.secured_index is None):
+            raise ValueError("Provide exactly one of card_label or secured_index")
+        return self
 
 
 class CardResponse(BaseModel):
-    """One MESO offer card as presented to the supplier."""
-
     label: str
     recommended: bool
     terms: TermsResponse
@@ -69,47 +56,27 @@ class CardResponse(BaseModel):
 
 
 class OffersResponse(BaseModel):
-    """Response for GET /offers and POST /improve."""
-
     banner: str
     is_final_round: bool
     is_first_visit: bool
     cards: list[CardResponse]
-    secured_offer: SecuredOfferResponse | None
+    secured_offers: list[SecuredOfferResponse]
+    can_secure: bool
     actions_available: list[str]
 
 
 class AgreeResponse(BaseModel):
-    """Response for POST /agree."""
-
     status: str
     agreed_terms: TermsResponse
 
 
-class SecureResponse(BaseModel):
-    """Response for POST /secure."""
-
-    secured_offer: SecuredOfferResponse
-
-
 class EndResponse(BaseModel):
-    """Response for POST /end."""
-
     status: str
 
 
 class ResetResponse(BaseModel):
-    """Response for POST /reset."""
-
     status: str
 
 
-# ---------------------------------------------------------------------------
-# Error response
-# ---------------------------------------------------------------------------
-
-
 class ErrorResponse(BaseModel):
-    """Standard error body for all exception handler responses."""
-
     error: str

@@ -76,8 +76,10 @@ def generate_meso_set(
         ValueError: If no valid candidates can be found within tolerance.
     """
     # Generate without floor — per-card filtering happens during selection.
+    # Pass opponent_weights to bias the sampling ranges.
     candidates = _generate_candidates(
         config, operator_weights, target_utility, floor_scale=0.0,
+        opponent_weights=opponent_weights,
     )
 
     if len(candidates) < 3:
@@ -85,6 +87,7 @@ def generate_meso_set(
             candidates = _generate_candidates(
                 config, operator_weights, target_utility,
                 UTILITY_TOLERANCE * multiplier, floor_scale=0.0,
+                opponent_weights=opponent_weights,
             )
             if len(candidates) >= 3:
                 break
@@ -99,22 +102,35 @@ def generate_meso_set(
     floor = target_utility * _FLOOR_SCALE
 
     # Specialty cards: exempt their key term from floor, keep floor on rest.
-    # This prevents non-specialty terms from collapsing while allowing the
-    # specialty term to go extreme.
-    price_pool = _filter_floor_except(candidates, config, floor, exempt="price")
+    # Per-term floors are scaled by opponent weights so that terms the supplier
+    # values (high weight) get a higher floor (must be better for supplier)
+    # and terms the supplier traded away (low weight) get a lower floor (can
+    # be worse).  This produces the directional trade-off: improve payment +
+    # trade delivery → payment gets better, delivery gets worse.
+    price_pool = _filter_floor_except(
+        candidates, config, floor, exempt="price",
+        opponent_weights=opponent_weights, term_config=config,
+    )
     if not price_pool:
         price_pool = candidates
     best_price = _select_best_price(price_pool, config, opponent_weights)
 
-    payment_pool = _filter_floor_except(candidates, config, floor, exempt="payment")
+    payment_pool = _filter_floor_except(
+        candidates, config, floor, exempt="payment",
+        opponent_weights=opponent_weights, term_config=config,
+    )
     if not payment_pool:
         payment_pool = candidates
     fastest_payment = _select_fastest_payment(
         payment_pool, config, opponent_weights, exclude=best_price
     )
 
-    # Balanced card: all terms must meet the floor.
-    balanced_pool = [c for c in candidates if _meets_floor(c, config, floor)]
+    # Balanced card: all terms must meet the opponent-weighted floor.
+    balanced_pool = [
+        c for c in candidates
+        if _meets_floor(c, config, floor, opponent_weights=opponent_weights,
+                        term_config=config)
+    ]
     if not balanced_pool:
         balanced_pool = candidates
     most_balanced = _select_most_balanced(
@@ -128,36 +144,95 @@ def generate_meso_set(
     )
 
 
+def _biased_range(
+    cfg: TermConfig,
+    opponent_weight: float,
+) -> tuple[float, float]:
+    """Compute a biased (walk_away, opening) range based on opponent weight.
+
+    The supplier always wants LOWER values for all terms.  For each term the
+    "supplier-better" end has lower values and the "supplier-worse" end has
+    higher values.
+
+    Improved terms (high weight): shrink from the worse end so the grid only
+    produces values that are good for the supplier.
+
+    Traded terms (low weight): shrink from the better end so the grid only
+    produces values that are bad for the supplier.
+
+    Neutral (uniform weight 0.25): no change.
+    """
+    opening = cfg.opening
+    walk_away = cfg.walk_away
+    ratio = opponent_weight / 0.25  # 1.0 = neutral
+
+    if abs(ratio - 1.0) < 0.01:
+        return (walk_away, opening)
+
+    full_range = walk_away - opening  # signed
+
+    # Supplier wants lower values.  Determine which end is "lower".
+    if opening < walk_away:
+        # opening is the low (supplier-better) end, walk_away is high (worse)
+        if ratio > 1.0:
+            # Improved: cut from walk_away side (remove high/bad values)
+            shrink = min(0.7, (ratio - 1.0) * 2.0)
+            new_walk_away = walk_away - shrink * full_range
+            return (new_walk_away, opening)
+        else:
+            # Traded: cut from opening side (remove low/good values)
+            shrink = min(0.7, (1.0 - ratio) * 2.0)
+            new_opening = opening + shrink * full_range
+            return (walk_away, new_opening)
+    else:
+        # opening is the high end, walk_away is low (supplier-better)
+        # e.g. payment: opening=90, walk_away=30 (lower=better for supplier)
+        if ratio > 1.0:
+            # Improved: cut from opening side (remove high/bad values)
+            shrink = min(0.7, (ratio - 1.0) * 2.0)
+            new_opening = opening - shrink * (opening - walk_away)
+            return (walk_away, new_opening)
+        else:
+            # Traded: cut from walk_away side (remove low/good values)
+            shrink = min(0.7, (1.0 - ratio) * 2.0)
+            new_walk_away = walk_away + shrink * (opening - walk_away)
+            return (new_walk_away, opening)
+
+
 def _generate_candidates(
     config: dict[str, TermConfig],
     operator_weights: Weights,
     target_utility: float,
     tolerance: float = UTILITY_TOLERANCE,
     floor_scale: float = _FLOOR_SCALE,
+    opponent_weights: Weights | None = None,
 ) -> list[TermValues]:
     """Sample a grid of term combinations and return those near target utility.
 
-    Samples the full walk_away→opening range for each term, then filters to
-    candidates within target_utility ± tolerance AND whose per-term
-    achievements all exceed a minimum floor.  The floor prevents any single
-    term from jumping to its walk-away extreme while others compensate,
-    ensuring visible improvement across negotiation rounds.
+    When opponent_weights are provided, the sampling range for each term is
+    biased: improved terms (high weight) sample only values good for the
+    supplier, traded terms (low weight) sample only values bad for the
+    supplier.  This produces the directional trade-off.
     """
     price_cfg = config["price"]
     payment_cfg = config["payment"]
     delivery_cfg = config["delivery"]
     contract_cfg = config["contract"]
 
-    price_range = _sample_range(price_cfg.walk_away, price_cfg.opening, _GRID_STEPS)
-    payment_range = _sample_range(
-        payment_cfg.walk_away, payment_cfg.opening, _GRID_STEPS
-    )
-    delivery_range = _sample_range(
-        delivery_cfg.walk_away, delivery_cfg.opening, _GRID_STEPS
-    )
-    contract_range = _sample_range(
-        contract_cfg.walk_away, contract_cfg.opening, _GRID_STEPS
-    )
+    if opponent_weights is not None:
+        pw, po = _biased_range(price_cfg, opponent_weights.price)
+        price_range = _sample_range(pw, po, _GRID_STEPS)
+        pw, po = _biased_range(payment_cfg, opponent_weights.payment)
+        payment_range = _sample_range(pw, po, _GRID_STEPS)
+        pw, po = _biased_range(delivery_cfg, opponent_weights.delivery)
+        delivery_range = _sample_range(pw, po, _GRID_STEPS)
+        pw, po = _biased_range(contract_cfg, opponent_weights.contract)
+        contract_range = _sample_range(pw, po, _GRID_STEPS)
+    else:
+        price_range = _sample_range(price_cfg.walk_away, price_cfg.opening, _GRID_STEPS)
+        payment_range = _sample_range(payment_cfg.walk_away, payment_cfg.opening, _GRID_STEPS)
+        delivery_range = _sample_range(delivery_cfg.walk_away, delivery_cfg.opening, _GRID_STEPS)
+        contract_range = _sample_range(contract_cfg.walk_away, contract_cfg.opening, _GRID_STEPS)
 
     achievement_floor = target_utility * floor_scale
 
@@ -207,27 +282,14 @@ def _select_best_price(
     config: dict[str, TermConfig],
     opponent_weights: Weights,
 ) -> TermValues:
-    """Select the candidate with the most favorable price for the supplier.
+    """Select the candidate with the lowest (cheapest) price.
 
-    The supplier's ideal price is toward the operator's walk_away (the
-    operator's limit = the supplier's best achievable).  As the operator
-    concedes across rounds, prices can move closer to walk_away, so this
-    selection produces monotonically improving prices for the supplier.
+    Per the feature spec: "the BEST PRICE card has the lowest price among
+    the 3 cards."  Best Price = cheapest = most competitive offer.
     """
-    price_cfg = config["price"]
-    # Supplier wants price closest to operator's walk_away.
-    # walk_away < target → supplier benefits from lower price → select min.
-    # walk_away > target → supplier benefits from higher price → select max.
-    supplier_prefers_lower = price_cfg.walk_away < price_cfg.target
-
-    if supplier_prefers_lower:
-        best_price_value = min(c.price for c in candidates)
-    else:
-        best_price_value = max(c.price for c in candidates)
-
+    best_price_value = min(c.price for c in candidates)
     best_candidates = [c for c in candidates if c.price == best_price_value]
 
-    # Tiebreak: prefer fastest payment (secondary signal)
     return _select_by_opponent_secondary(
         best_candidates, opponent_weights, primary_term="price", config=config
     )
@@ -291,17 +353,67 @@ def _select_most_balanced(
         mean = sum(achievements) / len(achievements)
         variance = sum((a - mean) ** 2 for a in achievements) / len(achievements)
 
-        # Bias toward opponent preferences: subtract small amount for
-        # terms the supplier values (lower score = preferred)
-        opponent_bonus = (
-            -0.1 * opponent_weights.price * _per_term_achievement(terms.price, config["price"])
-            - 0.1 * opponent_weights.payment * _per_term_achievement(terms.payment, config["payment"])
-            - 0.1 * opponent_weights.delivery * _per_term_achievement(terms.delivery, config["delivery"])
-            - 0.1 * opponent_weights.contract * _per_term_achievement(terms.contract, config["contract"])
-        )
+        # Bias toward opponent preferences.  The supplier always wants
+        # LOWER values.  For aligned terms (lower value = higher achievement),
+        # prefer HIGH achievement.  For inverted terms like payment (lower
+        # value = lower achievement), prefer LOW achievement.
+        opponent_bonus = 0.0
+        for t_name in ("price", "payment", "delivery", "contract"):
+            w = getattr(opponent_weights, t_name)
+            a = _per_term_achievement(getattr(terms, t_name), config[t_name])
+            cfg = config[t_name]
+            inverted = cfg.target > cfg.walk_away
+            if inverted:
+                # Prefer LOW achievement (= lower value = better for supplier)
+                opponent_bonus += 0.4 * w * a
+            else:
+                # Prefer HIGH achievement (= lower value = better for supplier)
+                opponent_bonus -= 0.4 * w * a
         return variance + opponent_bonus
 
     return min(available, key=balance_score)
+
+
+def _opponent_scaled_floor(
+    base_floor: float,
+    term: str,
+    opponent_weights: Weights | None,
+    config: dict[str, TermConfig] | None = None,
+) -> float:
+    """Scale the per-term floor by the opponent's weight for that term.
+
+    The supplier always wants LOWER values (cheaper price, faster payment,
+    faster delivery, shorter contract).  For most terms, lower value = higher
+    MAUT achievement (aligned).  But when target > walk_away (e.g. payment:
+    target=75 > walk_away=30), lower value = LOWER achievement (inverted).
+
+    For aligned terms (price, delivery, contract):
+      Higher opponent weight → higher floor → forces higher achievement
+      → lower values → better for supplier.
+
+    For inverted terms (payment):
+      Higher opponent weight → LOWER floor → allows lower achievement
+      → lower values → better for supplier.
+
+    Clamped to [0.2, 1.8] ratio to prevent extreme filtering.
+    """
+    if opponent_weights is None:
+        return base_floor
+    weight = getattr(opponent_weights, term)
+
+    # Detect inversion: supplier wants lower values, but for this term
+    # lower value means lower achievement (target > walk_away).
+    inverted = False
+    if config and term in config:
+        cfg = config[term]
+        inverted = cfg.target > cfg.walk_away
+
+    # Inverted: higher weight → LOWER floor (allows lower achievement = lower value)
+    # Aligned: higher weight → HIGHER floor (forces higher achievement = lower value)
+    ratio = ((0.25 / weight) if weight > 1e-9 else 5.0) if inverted else weight / 0.25
+
+    ratio = max(0.2, min(1.8, ratio))
+    return base_floor * ratio
 
 
 def _filter_floor_except(
@@ -309,29 +421,38 @@ def _filter_floor_except(
     config: dict[str, TermConfig],
     floor: float,
     exempt: str,
+    opponent_weights: Weights | None = None,
+    term_config: dict[str, TermConfig] | None = None,
 ) -> list[TermValues]:
-    """Filter candidates where all terms EXCEPT the exempt one meet the floor."""
+    """Filter candidates where all terms EXCEPT the exempt one meet the
+    opponent-weighted floor (direction-aware)."""
     terms = ["price", "payment", "delivery", "contract"]
     checked = [t for t in terms if t != exempt]
+    cfg = term_config or config
     return [
         c for c in candidates
         if all(
-            _per_term_achievement(getattr(c, t), config[t]) >= floor
+            _per_term_achievement(getattr(c, t), config[t])
+            >= _opponent_scaled_floor(floor, t, opponent_weights, cfg)
             for t in checked
         )
     ]
 
 
 def _meets_floor(
-    terms: TermValues, config: dict[str, TermConfig], floor: float
+    terms: TermValues,
+    config: dict[str, TermConfig],
+    floor: float,
+    opponent_weights: Weights | None = None,
+    term_config: dict[str, TermConfig] | None = None,
 ) -> bool:
-    """True if all per-term achievements are at or above the floor."""
-    return (
-        _per_term_achievement(terms.price, config["price"]) >= floor
-        and _per_term_achievement(terms.payment, config["payment"]) >= floor
-        and _per_term_achievement(terms.delivery, config["delivery"]) >= floor
-        and _per_term_achievement(terms.contract, config["contract"]) >= floor
-    )
+    """True if all per-term achievements meet the opponent-weighted floor."""
+    cfg = term_config or config
+    for t in ("price", "payment", "delivery", "contract"):
+        scaled = _opponent_scaled_floor(floor, t, opponent_weights, cfg)
+        if _per_term_achievement(getattr(terms, t), config[t]) < scaled:
+            return False
+    return True
 
 
 def _per_term_achievement(value: float, cfg: TermConfig) -> float:

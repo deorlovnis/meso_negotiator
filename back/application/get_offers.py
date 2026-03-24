@@ -1,16 +1,7 @@
 """GetOffersUseCase — load negotiation and return current MESO set.
 
-This use case:
-1. Loads the negotiation by ID.
-2. If PENDING, activates it (first visit) and generates the opening MESO set.
-3. Returns the 3 cards stripped of operator utility — the supplier never sees
-   internal scoring (ISP: return only what the supplier UI needs).
-
-Output:
-- Card labels, term values, signal indicators (which terms are strong)
-- Whether Improve is available (false on final round)
-- Whether this is the first visit (is_first_visit=True for PENDING->ACTIVE)
-- Currently secured offer, if any
+V2: secured_offers is a list, signals use 'better'/'neutral'/'worse',
+actions depend on can_secure.
 """
 
 from __future__ import annotations
@@ -22,7 +13,14 @@ from back.config import get_settings
 from back.domain import concession as concession_module
 from back.domain import meso as meso_module
 from back.domain.negotiation import NegotiationError
-from back.domain.types import CardLabel, MesoSet, NegotiationState, Offer, TermValues
+from back.domain.types import (
+    CardLabel,
+    MesoSet,
+    NegotiationState,
+    Offer,
+    SecuredOffer,
+    TermValues,
+)
 
 if TYPE_CHECKING:
     from back.application.ports import NegotiationRepository
@@ -30,12 +28,6 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class TermSignals:
-    """Visual signal indicators for each term on a card.
-
-    'good' = strong relative to the card's label profile.
-    'neutral' = average.
-    """
-
     price: str
     payment: str
     delivery: str
@@ -44,8 +36,6 @@ class TermSignals:
 
 @dataclass(frozen=True)
 class CardDTO:
-    """Supplier-facing representation of one MESO offer card."""
-
     label: str
     recommended: bool
     terms: TermValues
@@ -54,33 +44,20 @@ class CardDTO:
 
 @dataclass(frozen=True)
 class OffersDTO:
-    """Full response for the GET /offers endpoint and POST /improve response."""
-
     banner: str
     is_final_round: bool
     is_first_visit: bool
     cards: list[CardDTO]
-    secured_offer: TermValues | None
+    secured_offers: list[SecuredOffer]
+    can_secure: bool
     actions_available: list[str]
 
 
 class GetOffersUseCase:
-    """Load negotiation and return current MESO set for the supplier UI."""
-
     def __init__(self, repo: NegotiationRepository) -> None:
         self._repo = repo
 
     def execute(self, negotiation_id: str) -> OffersDTO:
-        """Load and return the current offers for a negotiation.
-
-        Activates PENDING negotiations on first call.
-
-        Args:
-            negotiation_id: ID of the negotiation to load.
-
-        Returns:
-            OffersDTO with cards stripped of utility scores.
-        """
         negotiation = self._repo.get(negotiation_id)
         is_first_visit = False
 
@@ -93,7 +70,6 @@ class GetOffersUseCase:
         if negotiation.state == NegotiationState.PENDING:
             negotiation.activate()
             is_first_visit = True
-            # Generate opening MESO set
             settings = get_settings()
             target = concession_module.target_utility(
                 round=negotiation.round,
@@ -118,20 +94,20 @@ class GetOffersUseCase:
             )
 
         cards = _build_cards(meso_set)
-        actions = _build_actions(negotiation.is_final_round)
+        actions = _build_actions(negotiation.is_final_round, negotiation.can_secure)
 
         return OffersDTO(
             banner="OFFERS UPDATED BASED ON YOUR PREFERENCES",
             is_final_round=negotiation.is_final_round,
             is_first_visit=is_first_visit,
             cards=cards,
-            secured_offer=negotiation.secured_offer,
+            secured_offers=negotiation.secured_offers,
+            can_secure=negotiation.can_secure,
             actions_available=actions,
         )
 
 
 def _build_cards(meso_set: MesoSet) -> list[CardDTO]:
-    """Convert a MesoSet into supplier-facing CardDTOs."""
     return [
         _card_dto(meso_set.best_price, recommended=False),
         _card_dto(meso_set.most_balanced, recommended=True),
@@ -140,7 +116,6 @@ def _build_cards(meso_set: MesoSet) -> list[CardDTO]:
 
 
 def _card_dto(offer: Offer, recommended: bool) -> CardDTO:
-    """Build a CardDTO from an Offer, computing signal indicators."""
     label_str = offer.label.value.replace("_", " ")
     signals = _compute_signals(offer.label)
     return CardDTO(
@@ -152,27 +127,20 @@ def _card_dto(offer: Offer, recommended: bool) -> CardDTO:
 
 
 def _compute_signals(label: CardLabel) -> TermSignals:
-    """Compute visual signals for each term based on the card's label profile.
-
-    The 'strength' term for each profile shows 'good'. Others show 'neutral'.
-    """
+    """Compute visual signals: 'better' for strength dimension, 'neutral' for others."""
     if label == CardLabel.BEST_PRICE:
-        return TermSignals(
-            price="good", payment="neutral", delivery="good", contract="neutral"
-        )
+        return TermSignals(price="better", payment="neutral", delivery="better", contract="neutral")
     elif label == CardLabel.FASTEST_PAYMENT:
-        return TermSignals(
-            price="neutral", payment="good", delivery="neutral", contract="neutral"
-        )
+        return TermSignals(price="neutral", payment="better", delivery="neutral", contract="neutral")
     else:  # MOST_BALANCED
-        return TermSignals(
-            price="good", payment="good", delivery="good", contract="good"
-        )
+        return TermSignals(price="neutral", payment="neutral", delivery="neutral", contract="neutral")
 
 
-def _build_actions(is_final_round: bool) -> list[str]:
-    """Build the list of available actions for the current round."""
-    actions = ["agree", "secure"]
-    if not is_final_round:
-        actions.append("improve")
+def _build_actions(is_final_round: bool, can_secure: bool = True) -> list[str]:
+    if is_final_round:
+        return ["agree"]
+    actions = ["agree"]
+    if can_secure:
+        actions.append("secure")
+    actions.append("improve")
     return actions

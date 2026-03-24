@@ -1,14 +1,4 @@
-"""HTTP route handlers — thin adapters between HTTP and application use cases.
-
-Responsibilities (only):
-- Parse incoming JSON into use case inputs.
-- Call the appropriate use case.
-- Serialize the use case output into the JSON response.
-
-Routes MUST NOT contain domain logic, try/except for domain errors, or
-repository instantiation. Domain exceptions are handled centrally by
-exception_handlers.py (registered in server.py).
-"""
+"""HTTP route handlers — v2 API contract."""
 
 from __future__ import annotations
 
@@ -25,13 +15,14 @@ from back.api.dependencies import (  # noqa: TC001
     SecureDep,
 )
 from back.api.schemas import (
+    AgreeRequest,
     AgreeResponse,
     CardLabelRequest,
     EndResponse,
+    ImproveRequest,
     OffersResponse,
     ResetResponse,
     SecuredOfferResponse,
-    SecureResponse,
     SignalsResponse,
     TermsResponse,
 )
@@ -43,20 +34,7 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/api")
 
 
-# ---------------------------------------------------------------------------
-# Formatting helpers
-# ---------------------------------------------------------------------------
-
-
 def _format_terms(terms: TermValues) -> TermsResponse:
-    """Format raw numeric TermValues into display strings.
-
-    Conventions (from feature spec):
-    - price: dollars per thousand boxes -> "$120.00"
-    - payment: days -> "Net 60"
-    - delivery: days -> "10 days"
-    - contract: months -> "12 months"
-    """
     return TermsResponse(
         price=f"${terms.price:.2f}",
         payment=f"Net {int(terms.payment)}",
@@ -66,7 +44,6 @@ def _format_terms(terms: TermValues) -> TermsResponse:
 
 
 def _build_offers_response(dto: OffersDTO) -> OffersResponse:
-    """Convert an OffersDTO to an OffersResponse."""
     from back.api.schemas import CardResponse
 
     cards = [
@@ -84,26 +61,31 @@ def _build_offers_response(dto: OffersDTO) -> OffersResponse:
         for card in dto.cards
     ]
 
-    secured: SecuredOfferResponse | None = None
-    if dto.secured_offer is not None:
-        secured = SecuredOfferResponse(
-            label="SECURED",
-            terms=_format_terms(dto.secured_offer),
+    # Build secured offers list sorted by operator utility (Bot Rank)
+    sorted_secured = sorted(
+        dto.secured_offers,
+        key=lambda s: s.operator_utility,
+        reverse=True,
+    )
+    secured_responses = [
+        SecuredOfferResponse(
+            rank=i + 1,
+            label=s.offer.label.value.replace("_", " "),
+            terms=_format_terms(s.offer.terms),
+            round_secured=s.round_secured,
         )
+        for i, s in enumerate(sorted_secured)
+    ]
 
     return OffersResponse(
         banner=dto.banner,
         is_final_round=dto.is_final_round,
         is_first_visit=dto.is_first_visit,
         cards=cards,
-        secured_offer=secured,
+        secured_offers=secured_responses,
+        can_secure=dto.can_secure,
         actions_available=dto.actions_available,
     )
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 
 @router.get(
@@ -114,7 +96,6 @@ async def get_offers(
     negotiation_id: str,
     use_case: GetOffersDep,
 ) -> OffersResponse:
-    """Return current MESO offer set for the supplier UI."""
     dto = use_case.execute(negotiation_id)
     return _build_offers_response(dto)
 
@@ -125,11 +106,14 @@ async def get_offers(
 )
 async def agree(
     negotiation_id: str,
-    body: CardLabelRequest,
+    body: AgreeRequest,
     use_case: AgreeDep,
 ) -> AgreeResponse:
-    """Accept a card and close the deal."""
-    dto = use_case.execute(negotiation_id, body.card_label)
+    dto = use_case.execute(
+        negotiation_id,
+        label=body.card_label,
+        secured_index=body.secured_index,
+    )
     return AgreeResponse(
         status="accepted",
         agreed_terms=_format_terms(dto.agreed_terms),
@@ -138,21 +122,15 @@ async def agree(
 
 @router.post(
     "/negotiations/{negotiation_id}/secure",
-    response_model=SecureResponse,
+    response_model=OffersResponse,
 )
 async def secure(
     negotiation_id: str,
     body: CardLabelRequest,
     use_case: SecureDep,
-) -> SecureResponse:
-    """Mark a card as the fallback secured offer."""
+) -> OffersResponse:
     dto = use_case.execute(negotiation_id, body.card_label)
-    return SecureResponse(
-        secured_offer=SecuredOfferResponse(
-            label="SECURED",
-            terms=_format_terms(dto.secured_offer),
-        )
-    )
+    return _build_offers_response(dto)
 
 
 @router.post(
@@ -161,11 +139,10 @@ async def secure(
 )
 async def improve(
     negotiation_id: str,
-    body: CardLabelRequest,
+    body: ImproveRequest,
     use_case: ImproveDep,
 ) -> OffersResponse:
-    """Signal preference, advance round, return updated MESO set."""
-    dto = use_case.execute(negotiation_id, body.card_label)
+    dto = use_case.execute(negotiation_id, body.improve_term, body.trade_term)
     return _build_offers_response(dto)
 
 
@@ -177,7 +154,6 @@ async def end_negotiation(
     negotiation_id: str,
     use_case: EndNegotiationDep,
 ) -> EndResponse:
-    """Handle supplier taking no action on final round — transition to No Deal."""
     use_case.execute(negotiation_id)
     return EndResponse(status="no_deal")
 
@@ -190,6 +166,5 @@ async def reset_negotiation(
     negotiation_id: str,
     use_case: ResetDep,
 ) -> ResetResponse:
-    """Reset a negotiation to its initial state (demo convenience endpoint)."""
     use_case.execute(negotiation_id)
     return ResetResponse(status="reset")
