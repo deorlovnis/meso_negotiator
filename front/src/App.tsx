@@ -12,6 +12,7 @@ export default function App() {
     handleFallback,
     handleImprove,
     handleEndNegotiation,
+    handleCompareAgree,
     handleReset,
     handleRetry,
   } = useNegotiation()
@@ -20,7 +21,7 @@ export default function App() {
     case 'loading':
       return <LoadingPhase />
     case 'agreed':
-      return <AgreedPhase terms={view.terms} onReset={handleReset} />
+      return <AgreedPhase terms={view.terms} cardLabel={view.cardLabel} onReset={handleReset} />
     case 'no_deal':
       return <NoDealPhase onReset={handleReset} />
     case 'error':
@@ -35,6 +36,7 @@ export default function App() {
           onFallback={handleFallback}
           onImprove={handleImprove}
           onEndNegotiation={handleEndNegotiation}
+          onCompareAgree={handleCompareAgree}
         />
       )
   }

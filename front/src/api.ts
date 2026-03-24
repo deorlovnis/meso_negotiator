@@ -2,6 +2,7 @@
 export {
   ApiError,
   agree,
+  agreeSecured,
   endNegotiation,
   getOffers,
   improve,

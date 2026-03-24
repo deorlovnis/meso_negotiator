@@ -4,7 +4,7 @@ export type NegotiationView =
   | { phase: 'loading' }
   | { phase: 'offers'; data: OffersResponse }
   | { phase: 'acting'; data: OffersResponse; pendingAction: string }
-  | { phase: 'agreed'; terms: Terms }
+  | { phase: 'agreed'; terms: Terms; cardLabel?: string }
   | { phase: 'no_deal' }
   | { phase: 'error'; message: string }
 
@@ -12,7 +12,7 @@ export type Action =
   | { type: 'OFFERS_LOADED'; data: OffersResponse }
   | { type: 'ACTION_START'; data: OffersResponse; pendingAction: string }
   | { type: 'OFFERS_UPDATED'; data: OffersResponse }
-  | { type: 'AGREED'; terms: Terms }
+  | { type: 'AGREED'; terms: Terms; cardLabel?: string }
   | { type: 'NO_DEAL' }
   | { type: 'ERROR'; message: string }
 
@@ -24,7 +24,7 @@ export function reducer(_state: NegotiationView, action: Action): NegotiationVie
     case 'ACTION_START':
       return { phase: 'acting', data: action.data, pendingAction: action.pendingAction }
     case 'AGREED':
-      return { phase: 'agreed', terms: action.terms }
+      return { phase: 'agreed', terms: action.terms, cardLabel: action.cardLabel }
     case 'NO_DEAL':
       return { phase: 'no_deal' }
     case 'ERROR':

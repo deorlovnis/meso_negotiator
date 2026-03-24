@@ -3,14 +3,15 @@ import * as api from '../../../api'
 import { NEGOTIATION_ID } from '../constants'
 import { errorMessage, toLabelEnum } from '../lib/format'
 import { type NegotiationView, reducer } from '../lib/reducer'
-import type { Card } from '../types'
+import type { Card, TermType } from '../types'
 
 export function useNegotiation(): {
   view: NegotiationView
   handleAgree: (card: Card) => void
   handleFallback: (card: Card) => void
-  handleImprove: (card: Card) => void
+  handleImprove: (improveTerm: TermType, tradeTerm: TermType | null) => void
   handleEndNegotiation: () => void
+  handleCompareAgree: (index: number) => void
   handleReset: () => void
   handleRetry: () => void
 } {
@@ -29,7 +30,7 @@ export function useNegotiation(): {
     dispatch({ type: 'ACTION_START', data: currentData, pendingAction: 'agree' })
     api
       .agree(NEGOTIATION_ID, toLabelEnum(card.label))
-      .then((res) => dispatch({ type: 'AGREED', terms: res.agreed_terms }))
+      .then((res) => dispatch({ type: 'AGREED', terms: res.agreed_terms, cardLabel: card.label }))
       .catch((err: unknown) => dispatch({ type: 'ERROR', message: errorMessage(err) }))
   }
 
@@ -39,18 +40,27 @@ export function useNegotiation(): {
     dispatch({ type: 'ACTION_START', data: currentData, pendingAction: 'secure' })
     api
       .secure(NEGOTIATION_ID, toLabelEnum(card.label))
-      .then(() => api.getOffers(NEGOTIATION_ID))
       .then((data) => dispatch({ type: 'OFFERS_UPDATED', data }))
       .catch((err: unknown) => dispatch({ type: 'ERROR', message: errorMessage(err) }))
   }
 
-  function handleImprove(card: Card) {
+  function handleImprove(improveTerm: TermType, tradeTerm: TermType | null) {
     if (view.phase !== 'offers') return
     const currentData = view.data
     dispatch({ type: 'ACTION_START', data: currentData, pendingAction: 'improve' })
     api
-      .improve(NEGOTIATION_ID, toLabelEnum(card.label))
+      .improve(NEGOTIATION_ID, improveTerm, tradeTerm)
       .then((data) => dispatch({ type: 'OFFERS_UPDATED', data }))
+      .catch((err: unknown) => dispatch({ type: 'ERROR', message: errorMessage(err) }))
+  }
+
+  function handleCompareAgree(index: number) {
+    if (view.phase !== 'offers') return
+    const currentData = view.data
+    dispatch({ type: 'ACTION_START', data: currentData, pendingAction: 'agree' })
+    api
+      .agreeSecured(NEGOTIATION_ID, index)
+      .then((res) => dispatch({ type: 'AGREED', terms: res.agreed_terms }))
       .catch((err: unknown) => dispatch({ type: 'ERROR', message: errorMessage(err) }))
   }
 
@@ -85,6 +95,7 @@ export function useNegotiation(): {
     handleFallback,
     handleImprove,
     handleEndNegotiation,
+    handleCompareAgree,
     handleReset,
     handleRetry,
   }

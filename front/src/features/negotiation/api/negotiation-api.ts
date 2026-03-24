@@ -5,7 +5,7 @@ import type {
   EndResponse,
   OffersResponse,
   ResetResponse,
-  SecureResponse,
+  TermType,
 } from '../types'
 
 export class ApiError extends Error {
@@ -46,19 +46,31 @@ export function agree(id: string, cardLabel: CardLabel): Promise<AgreeResponse> 
   })
 }
 
-export function secure(id: string, cardLabel: CardLabel): Promise<SecureResponse> {
-  return fetchApi<SecureResponse>(`/api/negotiations/${id}/secure`, {
+export function agreeSecured(id: string, securedIndex: number): Promise<AgreeResponse> {
+  return fetchApi<AgreeResponse>(`/api/negotiations/${id}/agree`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secured_index: securedIndex }),
+  })
+}
+
+export function secure(id: string, cardLabel: CardLabel): Promise<OffersResponse> {
+  return fetchApi<OffersResponse>(`/api/negotiations/${id}/secure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ card_label: cardLabel }),
   })
 }
 
-export function improve(id: string, cardLabel: CardLabel): Promise<OffersResponse> {
+export function improve(
+  id: string,
+  improveTerm: TermType,
+  tradeTerm: TermType | null,
+): Promise<OffersResponse> {
   return fetchApi<OffersResponse>(`/api/negotiations/${id}/improve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ card_label: cardLabel }),
+    body: JSON.stringify({ improve_term: improveTerm, trade_term: tradeTerm }),
   })
 }
 

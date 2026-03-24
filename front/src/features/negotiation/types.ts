@@ -1,5 +1,6 @@
 export type CardLabel = 'BEST_PRICE' | 'MOST_BALANCED' | 'FASTEST_PAYMENT'
-export type Signal = 'good' | 'neutral' | 'weak'
+export type TermType = 'price' | 'delivery' | 'payment' | 'contract'
+export type IndicatorState = 'better' | 'neutral' | 'worse'
 
 export interface Terms {
   price: string
@@ -9,10 +10,10 @@ export interface Terms {
 }
 
 export interface Signals {
-  price: Signal
-  delivery: Signal
-  payment: Signal
-  contract: Signal
+  price: IndicatorState
+  delivery: IndicatorState
+  payment: IndicatorState
+  contract: IndicatorState
 }
 
 export interface Card {
@@ -23,8 +24,10 @@ export interface Card {
 }
 
 export interface SecuredOffer {
+  rank: number
   label: string
   terms: Terms
+  round_secured: number
 }
 
 export interface OffersResponse {
@@ -32,7 +35,8 @@ export interface OffersResponse {
   is_final_round: boolean
   is_first_visit: boolean
   cards: Card[]
-  secured_offer: SecuredOffer | null
+  secured_offers: SecuredOffer[]
+  can_secure: boolean
   actions_available: string[]
 }
 
@@ -41,20 +45,10 @@ export interface AgreeResponse {
   agreed_terms: Terms
 }
 
-export interface SecureResponse {
-  secured_offer: SecuredOffer
-}
-
 export interface EndResponse {
   status: string
 }
 
 export interface ResetResponse {
   status: string
-}
-
-export interface OfferDetail {
-  label: string
-  value: string
-  signal: Signal
 }
