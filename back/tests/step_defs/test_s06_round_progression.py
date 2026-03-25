@@ -16,17 +16,26 @@ from back.tests.conftest import (
 # ---------------------------------------------------------------------------
 
 
-@scenario("../features/core-loop.feature", "Each Improve action advances the negotiation by one round")
+@scenario(
+    "../features/core-loop.feature",
+    "Each Improve action advances the negotiation by one round",
+)
 def test_improve_advances_round() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Maria cannot return to previous round offers after clicking Improve")
+@scenario(
+    "../features/core-loop.feature",
+    "Maria cannot return to previous round offers after clicking Improve",
+)
 def test_cannot_return_to_previous_round() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Offers concede less in later rounds than in earlier rounds")
+@scenario(
+    "../features/core-loop.feature",
+    "Offers concede less in later rounds than in earlier rounds",
+)
 def test_diminishing_concessions() -> None:
     pass
 
@@ -36,7 +45,10 @@ def test_final_round_removes_improve() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Maria can still Agree or Secure on the final round")
+@scenario(
+    "../features/core-loop.feature",
+    "Maria can still Agree or Secure on the final round",
+)
 def test_agree_or_secure_on_final_round() -> None:
     pass
 
@@ -51,11 +63,7 @@ def given_she_has_not_secured(ctx: ScenarioContext) -> None:
     ctx.secured_offer = None
 
 
-@given(
-    parsers.parse(
-        "Maria has a secured offer from round {n:d}"
-    )
-)
+@given(parsers.parse("Maria has a secured offer from round {n:d}"))
 def given_maria_has_secured_from_round(n: int, ctx: ScenarioContext) -> None:
     """Set up a secured offer from round n (use MOST BALANCED as placeholder)."""
     from back.domain.maut import compute_utility
@@ -85,7 +93,7 @@ def given_maria_has_secured_from_round(n: int, ctx: ScenarioContext) -> None:
     ctx.current_round = prev_round
 
 
-@given("Maria clicks \"Improve terms\" in rounds 1, 2, 3, and 4")
+@given('Maria clicks "Improve terms" in rounds 1, 2, 3, and 4')
 def given_maria_clicks_improve_rounds_1_to_4(ctx: ScenarioContext) -> None:
     """Simulate Maria clicking Improve on any card through rounds 1-4."""
     for round_num in (1, 2, 3, 4):
@@ -113,9 +121,7 @@ def given_maria_clicks_improve_rounds_1_to_4(ctx: ScenarioContext) -> None:
 
 @then("the engine internally advances to round 2")
 def then_engine_advances_to_round_2(ctx: ScenarioContext) -> None:
-    assert ctx.current_round == 2, (
-        f"Expected round 2, got {ctx.current_round}"
-    )
+    assert ctx.current_round == 2, f"Expected round 2, got {ctx.current_round}"
 
 
 @then("a new set of 3 offer cards is generated")
@@ -135,9 +141,7 @@ def then_no_round_counter(ctx: ScenarioContext) -> None:
 
 @then("the round 2 offers are replaced by the round 3 offers")
 def then_round_2_replaced_by_round_3(ctx: ScenarioContext) -> None:
-    assert ctx.current_round == 3, (
-        f"Expected round 3, got {ctx.current_round}"
-    )
+    assert ctx.current_round == 3, f"Expected round 3, got {ctx.current_round}"
     assert len(ctx.current_offers) == 3
 
 
@@ -234,7 +238,7 @@ def then_maria_can_agree_secured(ctx: ScenarioContext) -> None:
     assert ctx.secured_offer is not None, "No secured offer to accept"
 
 
-@then("if Maria takes no action, the negotiation ends as \"No Deal\"")
+@then('if Maria takes no action, the negotiation ends as "No Deal"')
 def then_no_action_ends_as_no_deal(ctx: ScenarioContext) -> None:
     # Simulate the no-action path by verifying state can become No Deal.
     ctx.state = "No Deal"

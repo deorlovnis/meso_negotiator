@@ -20,7 +20,9 @@ def test_concession_curve_round_1() -> None:
     pass
 
 
-@scenario(FEATURE, "Concession curve at the final round produces utility near walk-away")
+@scenario(
+    FEATURE, "Concession curve at the final round produces utility near walk-away"
+)
 def test_concession_curve_final_round() -> None:
     pass
 

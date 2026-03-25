@@ -113,11 +113,7 @@ class Weights:
             ("contract", self.contract),
         ]:
             if value < 0.0:
-                raise ValueError(
-                    f"Weight '{name}' must be >= 0.0, got {value}"
-                )
+                raise ValueError(f"Weight '{name}' must be >= 0.0, got {value}")
         total = self.price + self.payment + self.delivery + self.contract
         if not math.isclose(total, 1.0, abs_tol=1e-6):
-            raise ValueError(
-                f"Weights must sum to 1.0, got {total}"
-            )
+            raise ValueError(f"Weights must sum to 1.0, got {total}")

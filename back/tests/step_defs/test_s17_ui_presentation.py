@@ -13,7 +13,7 @@ FEATURE = "../features/core-loop.feature"
 
 
 @pytest.mark.skip(reason="Frontend concern — requires browser test")
-@scenario(FEATURE, "Page title reads \"Review your negotiated offers\"")
+@scenario(FEATURE, 'Page title reads "Review your negotiated offers"')
 def test_page_title() -> None:
     pass
 

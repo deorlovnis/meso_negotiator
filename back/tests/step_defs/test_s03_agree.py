@@ -20,12 +20,18 @@ def test_maria_agrees_to_most_balanced() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Maria agrees on the first round without further negotiation")
+@scenario(
+    "../features/core-loop.feature",
+    "Maria agrees on the first round without further negotiation",
+)
 def test_maria_agrees_first_round() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Agree is available on every round including the final round")
+@scenario(
+    "../features/core-loop.feature",
+    "Agree is available on every round including the final round",
+)
 def test_agree_available_on_final_round() -> None:
     pass
 
@@ -119,9 +125,7 @@ def then_deal_closes_with_card_terms(ctx: ScenarioContext) -> None:
 
 @then("the negotiation ends after a single round")
 def then_negotiation_ends_after_single_round(ctx: ScenarioContext) -> None:
-    assert ctx.current_round == 1, (
-        f"Expected round 1, got {ctx.current_round}"
-    )
+    assert ctx.current_round == 1, f"Expected round 1, got {ctx.current_round}"
     assert ctx.state == "Accepted"
 
 

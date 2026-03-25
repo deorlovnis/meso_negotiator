@@ -14,27 +14,40 @@ from back.tests.conftest import (
 # ---------------------------------------------------------------------------
 
 
-@scenario("../features/core-loop.feature", "Maria sees 3 labeled offer cards on the review screen")
+@scenario(
+    "../features/core-loop.feature",
+    "Maria sees 3 labeled offer cards on the review screen",
+)
 def test_maria_sees_3_labeled_cards() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Each offer card shows all 4 negotiation terms")
+@scenario(
+    "../features/core-loop.feature", "Each offer card shows all 4 negotiation terms"
+)
 def test_each_card_shows_all_terms() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Offer cards show concrete term values from the engine")
+@scenario(
+    "../features/core-loop.feature",
+    "Offer cards show concrete term values from the engine",
+)
 def test_cards_show_concrete_values() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Cards highlight favorable terms with visual indicators")
+@scenario(
+    "../features/core-loop.feature",
+    "Cards highlight favorable terms with visual indicators",
+)
 def test_cards_highlight_favorable_terms() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "All 3 offer cards carry equal operator utility")
+@scenario(
+    "../features/core-loop.feature", "All 3 offer cards carry equal operator utility"
+)
 def test_equal_operator_utility() -> None:
     pass
 
@@ -83,12 +96,12 @@ def then_most_balanced_has_recommended_badge(ctx: ScenarioContext) -> None:
     # The Recommended badge is a UI rule: always on MOST BALANCED.
     # We verify the MOST BALANCED card exists in the current offers.
     labels = [card.label for card in ctx.current_offers]
-    assert "MOST BALANCED" in labels, (
-        f"MOST BALANCED card not found in {labels}"
-    )
+    assert "MOST BALANCED" in labels, f"MOST BALANCED card not found in {labels}"
 
 
-@then("each card displays a value for price per unit, delivery time, payment terms, and contract length")
+@then(
+    "each card displays a value for price per unit, delivery time, payment terms, and contract length"
+)
 def then_each_card_has_all_terms(ctx: ScenarioContext) -> None:
     assert len(ctx.current_offers) == 3
     for card in ctx.current_offers:
@@ -142,9 +155,7 @@ def then_no_two_cards_identical(ctx: ScenarioContext) -> None:
     seen: set[tuple[float, int, int, int]] = set()
     for card in ctx.current_offers:
         signature = (card.price, card.payment, card.delivery, card.contract)
-        assert signature not in seen, (
-            f"Duplicate card signature {signature} found"
-        )
+        assert signature not in seen, f"Duplicate card signature {signature} found"
         seen.add(signature)
 
 
@@ -193,7 +204,9 @@ def then_fastest_payment_has_checkmark(ctx: ScenarioContext) -> None:
     assert fastest_payment_card.payment == min(payments)
 
 
-@then("the MAUT utility score for James is equal across all 3 cards within a tolerance of 0.02")
+@then(
+    "the MAUT utility score for James is equal across all 3 cards within a tolerance of 0.02"
+)
 def then_utilities_equal_within_tolerance(ctx: ScenarioContext) -> None:
     from back.domain.meso import UTILITY_TOLERANCE
 

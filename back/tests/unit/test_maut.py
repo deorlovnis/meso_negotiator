@@ -130,7 +130,9 @@ class TestMautConcreteFormula:
         All terms at midpoint (achievement 0.5 each), uniform weights (0.25 each).
         MAUT = 4 * 0.25 * 0.50 = 0.50
         """
-        uniform_weights = Weights(price=0.25, payment=0.25, delivery=0.25, contract=0.25)
+        uniform_weights = Weights(
+            price=0.25, payment=0.25, delivery=0.25, contract=0.25
+        )
         # Midpoints: price=(12.50+14.50)/2=13.50, payment=(75+30)/2=52.5,
         #            delivery=(10+14)/2=12, contract=(12+24)/2=18
         terms = TermValues(price=13.50, payment=52.5, delivery=12, contract=18)
@@ -187,7 +189,9 @@ class TestMautEdgeCases:
         Expected: achievement is 1.0 if value == target, else 0.0.
         """
         degenerate_config = {
-            "price": TermConfig(opening=12.50, target=12.50, walk_away=12.50, weight=0.40),
+            "price": TermConfig(
+                opening=12.50, target=12.50, walk_away=12.50, weight=0.40
+            ),
             "payment": TermConfig(opening=75, target=75, walk_away=30, weight=0.25),
             "delivery": TermConfig(opening=10, target=10, walk_away=14, weight=0.20),
             "contract": TermConfig(opening=12, target=12, walk_away=24, weight=0.15),
@@ -207,7 +211,9 @@ class TestMautEdgeCases:
         utility from rounding errors.
         """
         # Price just barely above walk-away: 14.4999999999
-        terms = TermValues(price=14.4999999999, payment=30.0001, delivery=13.9999, contract=23.9999)
+        terms = TermValues(
+            price=14.4999999999, payment=30.0001, delivery=13.9999, contract=23.9999
+        )
         result = compute_utility(terms, BACKGROUND_CONFIG, OPERATOR_WEIGHTS)
         assert result >= 0.0, f"Near-boundary value produced negative utility: {result}"
         assert result < 0.01, f"Near-walk-away value should be near zero, got {result}"

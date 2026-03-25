@@ -52,7 +52,9 @@ def test_agreed_terms_match_display() -> None:
     pass
 
 
-@scenario(FEATURE, "No-deal when Maria exhausts all rounds without securing or agreeing")
+@scenario(
+    FEATURE, "No-deal when Maria exhausts all rounds without securing or agreeing"
+)
 def test_no_deal_exhausts_all_rounds() -> None:
     pass
 
@@ -198,9 +200,7 @@ def when_maria_does_not_agree_s16(ctx: ScenarioContext) -> None:
 
 @then(parsers.parse("the negotiation remains at round {n:d}"))
 def then_negotiation_remains_at_round(n: int, ctx: ScenarioContext) -> None:
-    assert ctx.current_round == n, (
-        f"Expected round {n}, got {ctx.current_round}"
-    )
+    assert ctx.current_round == n, f"Expected round {n}, got {ctx.current_round}"
 
 
 @then("the same 3 offer cards are still displayed")
@@ -272,7 +272,7 @@ def then_secured_not_auto_accepted(ctx: ScenarioContext) -> None:
     assert ctx.agreed_terms is None
 
 
-@then("the deal closes with the \"BEST PRICE\" card's terms")
+@then('the deal closes with the "BEST PRICE" card\'s terms')
 def then_deal_closes_best_price(ctx: ScenarioContext) -> None:
     assert ctx.agreed_terms is not None
     assert ctx.agreed_terms.label == "BEST PRICE"
@@ -317,6 +317,5 @@ def then_no_secured_offer(ctx: ScenarioContext) -> None:
 @then("the negotiation history records all 5 rounds of offers")
 def then_history_records_all_rounds(ctx: ScenarioContext) -> None:
     assert len(ctx.offer_history) == ctx.round_limit, (
-        f"Expected {ctx.round_limit} rounds in history, "
-        f"got {len(ctx.offer_history)}"
+        f"Expected {ctx.round_limit} rounds in history, got {len(ctx.offer_history)}"
     )

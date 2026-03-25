@@ -33,7 +33,9 @@ from back.tests.factories import make_config, make_weights
 
 BACKGROUND_CONFIG = make_config()
 OPERATOR_WEIGHTS = make_weights()
-UNIFORM_OPPONENT_WEIGHTS = Weights(price=0.25, payment=0.25, delivery=0.25, contract=0.25)
+UNIFORM_OPPONENT_WEIGHTS = Weights(
+    price=0.25, payment=0.25, delivery=0.25, contract=0.25
+)
 MARIA_WEIGHTS = Weights(price=0.30, payment=0.35, delivery=0.15, contract=0.20)
 
 # Target utility at round 1 with the corrected formula: progress = (1-1)/(5-1) = 0
@@ -135,7 +137,9 @@ class TestEqualOperatorUtility:
         """
         from back.domain.meso import UTILITY_TOLERANCE
 
-        skewed_opponent = Weights(price=0.10, payment=0.70, delivery=0.10, contract=0.10)
+        skewed_opponent = Weights(
+            price=0.10, payment=0.70, delivery=0.10, contract=0.10
+        )
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=OPERATOR_WEIGHTS,
@@ -292,7 +296,8 @@ class TestDistinctTermDistributions:
         max_price = max(o.terms.price for o in all_offers)
         if balanced.price == max_price:
             other_at_max = sum(
-                1 for o in all_offers
+                1
+                for o in all_offers
                 if o.terms.price == max_price and o.label != CardLabel.MOST_BALANCED
             )
             assert other_at_max > 0, (
@@ -303,7 +308,8 @@ class TestDistinctTermDistributions:
         min_payment = min(o.terms.payment for o in all_offers)
         if balanced.payment == min_payment:
             other_at_min = sum(
-                1 for o in all_offers
+                1
+                for o in all_offers
                 if o.terms.payment == min_payment and o.label != CardLabel.MOST_BALANCED
             )
             assert other_at_min > 0, (
@@ -331,8 +337,7 @@ class TestDistinctTermDistributions:
                     and a.contract == b.contract
                 )
                 assert not identical, (
-                    f"Cards {offers[i].label} and {offers[j].label} are "
-                    f"identical: {a}"
+                    f"Cards {offers[i].label} and {offers[j].label} are identical: {a}"
                 )
 
 
@@ -347,7 +352,9 @@ class TestMesoWithExtremeInputs:
 
         The generator must still produce 3 distinct cards with equal utility.
         """
-        extreme_weights = Weights(price=0.97, payment=0.01, delivery=0.01, contract=0.01)
+        extreme_weights = Weights(
+            price=0.97, payment=0.01, delivery=0.01, contract=0.01
+        )
         meso = generate_meso_set(
             config=BACKGROUND_CONFIG,
             operator_weights=extreme_weights,
@@ -562,8 +569,7 @@ class TestLogrollingProducesDistinctOffers:
             spans[term_name] = max(values) - min(values)
 
         any_above_threshold = any(
-            spans[term] > full_ranges[term] * threshold_fraction
-            for term in spans
+            spans[term] > full_ranges[term] * threshold_fraction for term in spans
         )
 
         card_summary = "\n    ".join(self._format_card(o) for o in offers)

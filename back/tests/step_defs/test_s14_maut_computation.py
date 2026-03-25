@@ -36,7 +36,9 @@ def test_walkaway_boundary_is_valid() -> None:
     pass
 
 
-@scenario(FEATURE, "No two MESO cards in a round have identical terms across all 4 dimensions")
+@scenario(
+    FEATURE, "No two MESO cards in a round have identical terms across all 4 dimensions"
+)
 def test_no_identical_meso_cards() -> None:
     pass
 
@@ -75,12 +77,8 @@ def given_james_configured_targets_walkaway(
             ctx.config.targets["price"] = float(target_raw.replace("$", ""))
             ctx.config.walk_away["price"] = float(walkaway_raw.replace("$", ""))
         elif term == "payment":
-            ctx.config.targets["payment"] = float(
-                target_raw.replace("Net ", "")
-            )
-            ctx.config.walk_away["payment"] = float(
-                walkaway_raw.replace("Net ", "")
-            )
+            ctx.config.targets["payment"] = float(target_raw.replace("Net ", ""))
+            ctx.config.walk_away["payment"] = float(walkaway_raw.replace("Net ", ""))
         elif term == "delivery":
             ctx.config.targets["delivery"] = float(target_raw)
             ctx.config.walk_away["delivery"] = float(walkaway_raw)
@@ -255,8 +253,7 @@ def then_price_achievement(expected: float, ctx: ScenarioContext) -> None:
 
 @then(
     parsers.parse(
-        "the per-term achievement for payment is "
-        "(45 - 30) / (75 - 30) = {expected:f}"
+        "the per-term achievement for payment is (45 - 30) / (75 - 30) = {expected:f}"
     )
 )
 def then_payment_achievement(expected: float, ctx: ScenarioContext) -> None:
@@ -268,8 +265,7 @@ def then_payment_achievement(expected: float, ctx: ScenarioContext) -> None:
 
 @then(
     parsers.parse(
-        "the per-term achievement for delivery is "
-        "(12 - 14) / (10 - 14) = {expected:f}"
+        "the per-term achievement for delivery is (12 - 14) / (10 - 14) = {expected:f}"
     )
 )
 def then_delivery_achievement(expected: float, ctx: ScenarioContext) -> None:
@@ -281,8 +277,7 @@ def then_delivery_achievement(expected: float, ctx: ScenarioContext) -> None:
 
 @then(
     parsers.parse(
-        "the per-term achievement for contract is "
-        "(18 - 24) / (12 - 24) = {expected:f}"
+        "the per-term achievement for contract is (18 - 24) / (12 - 24) = {expected:f}"
     )
 )
 def then_contract_achievement(expected: float, ctx: ScenarioContext) -> None:
@@ -316,7 +311,9 @@ def then_walkaway_price_valid(ctx: ScenarioContext) -> None:
     )
     utility = compute_utility(terms, term_config, op_weights)
     # Walk-away on price alone should give 0 contribution from price term
-    assert utility >= 0.0, "Walk-away price offer should be a valid (non-negative) utility"
+    assert utility >= 0.0, (
+        "Walk-away price offer should be a valid (non-negative) utility"
+    )
 
 
 @then("an offer with payment terms exactly Net 30 is within the valid range")
@@ -369,10 +366,13 @@ def then_no_identical_cards(ctx: ScenarioContext) -> None:
     assert len(ctx.current_offers) == 3
     seen: set[tuple[float, float, float, float]] = set()
     for card in ctx.current_offers:
-        key = (card.price, float(card.payment), float(card.delivery), float(card.contract))
-        assert key not in seen, (
-            f"Duplicate MESO card found: {key}"
+        key = (
+            card.price,
+            float(card.payment),
+            float(card.delivery),
+            float(card.contract),
         )
+        assert key not in seen, f"Duplicate MESO card found: {key}"
         seen.add(key)
 
 
@@ -404,6 +404,4 @@ def then_opening_round_deterministic(ctx: ScenarioContext) -> None:
 @then("the operator weights sum to exactly 1.00")
 def then_operator_weights_sum_to_one(ctx: ScenarioContext) -> None:
     total = sum(ctx.config.weights.values())
-    assert abs(total - 1.0) < 1e-9, (
-        f"Operator weights must sum to 1.0, got {total}"
-    )
+    assert abs(total - 1.0) < 1e-9, f"Operator weights must sum to 1.0, got {total}"

@@ -78,15 +78,21 @@ def generate_meso_set(
     # Generate without floor — per-card filtering happens during selection.
     # Pass opponent_weights to bias the sampling ranges.
     candidates = _generate_candidates(
-        config, operator_weights, target_utility, floor_scale=0.0,
+        config,
+        operator_weights,
+        target_utility,
+        floor_scale=0.0,
         opponent_weights=opponent_weights,
     )
 
     if len(candidates) < 3:
         for multiplier in [2, 4, 8]:
             candidates = _generate_candidates(
-                config, operator_weights, target_utility,
-                UTILITY_TOLERANCE * multiplier, floor_scale=0.0,
+                config,
+                operator_weights,
+                target_utility,
+                UTILITY_TOLERANCE * multiplier,
+                floor_scale=0.0,
                 opponent_weights=opponent_weights,
             )
             if len(candidates) >= 3:
@@ -108,16 +114,24 @@ def generate_meso_set(
     # be worse).  This produces the directional trade-off: improve payment +
     # trade delivery → payment gets better, delivery gets worse.
     price_pool = _filter_floor_except(
-        candidates, config, floor, exempt="price",
-        opponent_weights=opponent_weights, term_config=config,
+        candidates,
+        config,
+        floor,
+        exempt="price",
+        opponent_weights=opponent_weights,
+        term_config=config,
     )
     if not price_pool:
         price_pool = candidates
     best_price = _select_best_price(price_pool, config, opponent_weights)
 
     payment_pool = _filter_floor_except(
-        candidates, config, floor, exempt="payment",
-        opponent_weights=opponent_weights, term_config=config,
+        candidates,
+        config,
+        floor,
+        exempt="payment",
+        opponent_weights=opponent_weights,
+        term_config=config,
     )
     if not payment_pool:
         payment_pool = candidates
@@ -127,9 +141,11 @@ def generate_meso_set(
 
     # Balanced card: all terms must meet the opponent-weighted floor.
     balanced_pool = [
-        c for c in candidates
-        if _meets_floor(c, config, floor, opponent_weights=opponent_weights,
-                        term_config=config)
+        c
+        for c in candidates
+        if _meets_floor(
+            c, config, floor, opponent_weights=opponent_weights, term_config=config
+        )
     ]
     if not balanced_pool:
         balanced_pool = candidates
@@ -230,9 +246,15 @@ def _generate_candidates(
         contract_range = _sample_range(pw, po, _GRID_STEPS)
     else:
         price_range = _sample_range(price_cfg.walk_away, price_cfg.opening, _GRID_STEPS)
-        payment_range = _sample_range(payment_cfg.walk_away, payment_cfg.opening, _GRID_STEPS)
-        delivery_range = _sample_range(delivery_cfg.walk_away, delivery_cfg.opening, _GRID_STEPS)
-        contract_range = _sample_range(contract_cfg.walk_away, contract_cfg.opening, _GRID_STEPS)
+        payment_range = _sample_range(
+            payment_cfg.walk_away, payment_cfg.opening, _GRID_STEPS
+        )
+        delivery_range = _sample_range(
+            delivery_cfg.walk_away, delivery_cfg.opening, _GRID_STEPS
+        )
+        contract_range = _sample_range(
+            contract_cfg.walk_away, contract_cfg.opening, _GRID_STEPS
+        )
 
     achievement_floor = target_utility * floor_scale
 
@@ -430,7 +452,8 @@ def _filter_floor_except(
     checked = [t for t in terms if t != exempt]
     cfg = term_config or config
     return [
-        c for c in candidates
+        c
+        for c in candidates
         if all(
             _per_term_achievement(getattr(c, t), config[t])
             >= _opponent_scaled_floor(floor, t, opponent_weights, cfg)
@@ -489,7 +512,9 @@ def _select_by_opponent_secondary(
     Returns:
         Candidate with highest opponent cost on non-primary terms.
     """
-    non_primary = [t for t in ("price", "payment", "delivery", "contract") if t != primary_term]
+    non_primary = [
+        t for t in ("price", "payment", "delivery", "contract") if t != primary_term
+    ]
 
     opponent_w = {
         "price": opponent_weights.price,

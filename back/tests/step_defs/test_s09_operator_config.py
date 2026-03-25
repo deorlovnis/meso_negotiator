@@ -31,7 +31,6 @@ def test_operator_changes_weights_meso_shifts() -> None:
 # ---------------------------------------------------------------------------
 
 
-
 @given(
     parsers.parse(
         "James changes the weights to price {p:f}, payment {pay:f}, "

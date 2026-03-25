@@ -135,7 +135,7 @@ class TestConcessionCurveMonotonicity:
         ]
         # Drop = targets[r] - targets[r+1] (positive number = concession)
         drop_early = targets[0] - targets[1]  # round 1 -> round 2
-        drop_late = targets[3] - targets[4]    # round 4 -> round 5
+        drop_late = targets[3] - targets[4]  # round 4 -> round 5
 
         assert drop_early < drop_late, (
             f"Boulware (beta>1) holds firm early, concedes late: "
@@ -160,7 +160,9 @@ class TestConcessionCurveBetaVariants:
                 beta=1.0,
             )
             progress = (r - 1) / (MAX_ROUNDS - 1)
-            expected = WALKAWAY_UTILITY + (OPENING_UTILITY - WALKAWAY_UTILITY) * (1 - progress)
+            expected = WALKAWAY_UTILITY + (OPENING_UTILITY - WALKAWAY_UTILITY) * (
+                1 - progress
+            )
             assert abs(result - expected) < 1e-9, (
                 f"Beta=1 at round {r}: expected {expected}, got {result}"
             )
@@ -261,7 +263,5 @@ class TestConcessionCurveWithNonZeroWalkaway:
             assert current < previous, (
                 f"Not monotonic at round {r}: {current} >= {previous}"
             )
-            assert current >= 0.30, (
-                f"Should not go below walk-away 0.30: got {current}"
-            )
+            assert current >= 0.30, f"Should not go below walk-away 0.30: got {current}"
             previous = current

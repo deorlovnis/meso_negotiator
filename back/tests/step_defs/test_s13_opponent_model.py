@@ -127,9 +127,7 @@ def then_opponent_model_weights_uniform(ctx: ScenarioContext) -> None:
         )
 
 
-@then(
-    "the opponent model records the final weights with all dimensions reinforced"
-)
+@then("the opponent model records the final weights with all dimensions reinforced")
 def then_opponent_model_records_final_weights(ctx: ScenarioContext) -> None:
     # After agree, weights are available for future renegotiations
     # Verify the model is in a valid state (weights sum to 1, all >= 0)
@@ -139,18 +137,14 @@ def then_opponent_model_records_final_weights(ctx: ScenarioContext) -> None:
         assert w >= 0.0, f"Weight for '{term}' must be >= 0, got {w}"
 
 
-@then(
-    "the reinforced weights are available for future renegotiations with Maria"
-)
+@then("the reinforced weights are available for future renegotiations with Maria")
 def then_reinforced_weights_available(ctx: ScenarioContext) -> None:
     # Model is accessible and non-None
     assert ctx.opponent_model is not None
     assert ctx.opponent_model.weights is not None
 
 
-@then(
-    "the offers reflect both James's price priority and Maria's payment priority"
-)
+@then("the offers reflect both James's price priority and Maria's payment priority")
 def then_offers_reflect_combined_priorities(ctx: ScenarioContext) -> None:
     assert len(ctx.current_offers) == 3
     # BEST PRICE should have the most supplier-favorable price
@@ -201,6 +195,4 @@ def then_no_negative_weights(ctx: ScenarioContext) -> None:
     # Also check all historical snapshots
     for snapshot in ctx.weight_history:
         for term, w in snapshot.items():
-            assert w >= 0.0, (
-                f"Historical weight for '{term}' was negative: {w}"
-            )
+            assert w >= 0.0, f"Historical weight for '{term}' was negative: {w}"

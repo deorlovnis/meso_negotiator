@@ -20,7 +20,10 @@ from back.tests.conftest import (
 # ---------------------------------------------------------------------------
 
 
-@scenario("../features/core-loop.feature", "Maria secures an offer and the negotiation continues")
+@scenario(
+    "../features/core-loop.feature",
+    "Maria secures an offer and the negotiation continues",
+)
 def test_maria_secures_offer() -> None:
     pass
 
@@ -35,7 +38,9 @@ def test_secured_offer_preserved() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Securing updates the opponent model utility floor")
+@scenario(
+    "../features/core-loop.feature", "Securing updates the opponent model utility floor"
+)
 def test_securing_updates_utility_floor() -> None:
     pass
 
@@ -76,9 +81,7 @@ def given_fastest_payment_shows_terms(
 
 
 @given(
-    parsers.parse(
-        'Maria previously secured the "FASTEST PAYMENT" card in round {n:d}'
-    )
+    parsers.parse('Maria previously secured the "FASTEST PAYMENT" card in round {n:d}')
 )
 def given_maria_previously_secured_fastest_payment(
     n: int, ctx: ScenarioContext
@@ -172,9 +175,7 @@ def given_no_utility_floor(ctx: ScenarioContext) -> None:
         'Maria clicks "Secure as fallback" on a card with operator utility {utility:f}'
     )
 )
-def when_maria_secures_card_with_utility(
-    utility: float, ctx: ScenarioContext
-) -> None:
+def when_maria_secures_card_with_utility(utility: float, ctx: ScenarioContext) -> None:
     """Secure the card whose operator utility is closest to the given value."""
     if not ctx.current_offers:
         _generate_offers_for_round(ctx)
@@ -201,9 +202,7 @@ def then_card_marked_as_secured(ctx: ScenarioContext) -> None:
 
 @then("the negotiation does not end")
 def then_negotiation_does_not_end(ctx: ScenarioContext) -> None:
-    assert ctx.state == "Active", (
-        f"Expected state 'Active', got '{ctx.state}'"
-    )
+    assert ctx.state == "Active", f"Expected state 'Active', got '{ctx.state}'"
 
 
 @then('Maria can still click "Improve terms" on any card to continue negotiating')

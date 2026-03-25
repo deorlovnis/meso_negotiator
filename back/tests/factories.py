@@ -137,8 +137,7 @@ def make_meso_set(
         ),
         fastest_payment=Offer(
             label=CardLabel.FASTEST_PAYMENT,
-            terms=fastest_payment_terms
-            or DEFAULT_MESO_SET.fastest_payment.terms,
+            terms=fastest_payment_terms or DEFAULT_MESO_SET.fastest_payment.terms,
         ),
     )
 

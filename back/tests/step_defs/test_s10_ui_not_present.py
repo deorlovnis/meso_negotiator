@@ -36,7 +36,9 @@ def test_no_free_text_input() -> None:
     pass
 
 
-@scenario(FEATURE, "Operator utility scores are never exposed in the supplier API response")
+@scenario(
+    FEATURE, "Operator utility scores are never exposed in the supplier API response"
+)
 def test_utility_not_in_api_response() -> None:
     pass
 
@@ -169,7 +171,7 @@ def then_round_limit_internal(ctx: ScenarioContext) -> None:
         )
 
 
-@then("no prompt asking \"what would you like to trade?\" appears")
+@then('no prompt asking "what would you like to trade?" appears')
 def then_no_trade_off_prompt(ctx: ScenarioContext) -> None:
     # Engine generates new offers without any trade-off prompt
     assert len(ctx.current_offers) == 3, (
@@ -199,7 +201,9 @@ def then_no_text_input(ctx: ScenarioContext) -> None:
         assert "text_input" not in ctx.api_response
 
 
-@then("Maria's only interaction options are Agree, Secure as fallback, and Improve terms")
+@then(
+    "Maria's only interaction options are Agree, Secure as fallback, and Improve terms"
+)
 def then_only_three_actions(ctx: ScenarioContext) -> None:
     if ctx.api_response is not None and "actions_available" in ctx.api_response:
         actions = ctx.api_response["actions_available"]
@@ -231,9 +235,7 @@ def then_internal_state_records_round(n: int, ctx: ScenarioContext) -> None:
     )
 
 
-@then(
-    "the API response to the supplier frontend does not include the round number"
-)
+@then("the API response to the supplier frontend does not include the round number")
 def then_no_round_in_api(ctx: ScenarioContext) -> None:
     if ctx.api_response is not None:
         assert "round" not in ctx.api_response, (
@@ -244,9 +246,7 @@ def then_no_round_in_api(ctx: ScenarioContext) -> None:
         )
 
 
-@then(
-    'no text referencing "round", "step", or a numeric progress indicator appears'
-)
+@then('no text referencing "round", "step", or a numeric progress indicator appears')
 def then_no_progress_text(ctx: ScenarioContext) -> None:
     if ctx.api_response is not None:
         assert "current_round" not in ctx.api_response

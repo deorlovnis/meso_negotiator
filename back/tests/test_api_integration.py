@@ -122,7 +122,9 @@ class TestGetOffersStructure:
                 assert field in card["terms"], f"Missing terms.{field}"
                 assert field in card["signals"], f"Missing signals.{field}"
 
-    def test_card_labels_are_the_three_expected_profiles(self, client: TestClient) -> None:
+    def test_card_labels_are_the_three_expected_profiles(
+        self, client: TestClient
+    ) -> None:
         """GIVEN a PENDING negotiation
         WHEN the supplier GETs offers
         THEN the card labels are BEST PRICE, MOST BALANCED, FASTEST PAYMENT."""
@@ -139,7 +141,9 @@ class TestGetOffersStructure:
         assert len(recommended) == 1
         assert recommended[0]["label"] == "MOST BALANCED"
 
-    def test_terms_are_formatted_strings_not_raw_numbers(self, client: TestClient) -> None:
+    def test_terms_are_formatted_strings_not_raw_numbers(
+        self, client: TestClient
+    ) -> None:
         """GIVEN a PENDING negotiation
         WHEN the supplier GETs offers
         THEN terms are display-formatted: price as $X.XX, payment as Net N,
@@ -440,9 +444,7 @@ class TestFinalRoundBehavior:
         THEN the 5th round response has is_final_round=true and no 'improve'."""
         client.get(_offers_url())  # activate, round 1
         for _ in range(4):
-            resp = client.post(
-                _improve_url(), json={"card_label": "MOST_BALANCED"}
-            )
+            resp = client.post(_improve_url(), json={"card_label": "MOST_BALANCED"})
             assert resp.status_code == 200
         # After 4 improves we are at round 5 (the final round)
         data = resp.json()  # type: ignore[possibly-undefined]
@@ -550,9 +552,7 @@ class TestRoundAdvancement:
         THEN the returned cards may differ from the original round 1 cards
         AND is_first_visit is false on the improve response."""
         client.get(_offers_url()).json()
-        improved = client.post(
-            _improve_url(), json={"card_label": "BEST_PRICE"}
-        ).json()
+        improved = client.post(_improve_url(), json={"card_label": "BEST_PRICE"}).json()
         assert improved["is_first_visit"] is False
         # Cards should generally change (concession curve moves target utility)
         # but we only verify the structural contract holds.

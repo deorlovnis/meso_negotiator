@@ -16,12 +16,17 @@ from back.tests.conftest import (
 # ---------------------------------------------------------------------------
 
 
-@scenario("../features/core-loop.feature", "Maria clicks Improve on the Best Price card")
+@scenario(
+    "../features/core-loop.feature", "Maria clicks Improve on the Best Price card"
+)
 def test_maria_clicks_improve_best_price() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Improve shifts the next round's offers toward the card's strength")
+@scenario(
+    "../features/core-loop.feature",
+    "Improve shifts the next round's offers toward the card's strength",
+)
 def test_improve_shifts_offers() -> None:
     pass
 
@@ -31,12 +36,18 @@ def test_improve_updates_weights() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Consecutive Improve signals on the same dimension compound the shift")
+@scenario(
+    "../features/core-loop.feature",
+    "Consecutive Improve signals on the same dimension compound the shift",
+)
 def test_consecutive_improve_compounds() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Improve signals on different dimensions across rounds balance the offers")
+@scenario(
+    "../features/core-loop.feature",
+    "Improve signals on different dimensions across rounds balance the offers",
+)
 def test_improve_different_dimensions_balance() -> None:
     pass
 
@@ -131,9 +142,7 @@ def given_maria_clicked_improve_fastest_payment_in_round(
 @given("the round 2 offers already shifted toward faster payment")
 def given_round_2_shifted_toward_payment(ctx: ScenarioContext) -> None:
     """Verify the current (round 2) offers are already loaded."""
-    assert ctx.current_round == 2, (
-        f"Expected round 2, got {ctx.current_round}"
-    )
+    assert ctx.current_round == 2, f"Expected round 2, got {ctx.current_round}"
     assert ctx.current_offers, "No offers available for round 2"
 
 
@@ -149,7 +158,9 @@ def then_engine_generates_new_meso_set(ctx: ScenarioContext) -> None:
     )
 
 
-@then('Maria sees the updated offers with the banner "OFFERS UPDATED BASED ON YOUR PREFERENCES"')
+@then(
+    'Maria sees the updated offers with the banner "OFFERS UPDATED BASED ON YOUR PREFERENCES"'
+)
 def then_sees_updated_offers_with_banner(ctx: ScenarioContext) -> None:
     assert ctx.state == "Active"
     assert len(ctx.current_offers) == 3
@@ -164,7 +175,9 @@ def then_no_tradeoff_prompt(ctx: ScenarioContext) -> None:
     )
 
 
-@then("the round 2 offers show payment terms that are faster or equal to the round 1 average")
+@then(
+    "the round 2 offers show payment terms that are faster or equal to the round 1 average"
+)
 def then_round_2_payment_faster_or_equal(ctx: ScenarioContext) -> None:
     # Find round 1 offers in history
     round_1_offers = None
@@ -176,7 +189,9 @@ def then_round_2_payment_faster_or_equal(ctx: ScenarioContext) -> None:
         # History may only contain round 2; skip comparison if round 1 not available
         return
     round_1_avg_payment = sum(c.payment for c in round_1_offers) / len(round_1_offers)
-    round_2_avg_payment = sum(c.payment for c in ctx.current_offers) / len(ctx.current_offers)
+    round_2_avg_payment = sum(c.payment for c in ctx.current_offers) / len(
+        ctx.current_offers
+    )
     # Lower payment days = faster payment = better for Maria
     assert round_2_avg_payment <= round_1_avg_payment + 1e-6, (
         f"Round 2 avg payment {round_2_avg_payment:.1f} should be <= "
@@ -219,9 +234,7 @@ def then_payment_weight_increased(ctx: ScenarioContext) -> None:
 @then("the opponent model decreases one or more other term weights to compensate")
 def then_other_weights_decreased(ctx: ScenarioContext) -> None:
     # At least one of price, delivery, contract must be below 0.25
-    non_payment = [
-        ctx.opponent_weights[t] for t in ("price", "delivery", "contract")
-    ]
+    non_payment = [ctx.opponent_weights[t] for t in ("price", "delivery", "contract")]
     assert any(w < 0.25 for w in non_payment), (
         f"Expected at least one weight < 0.25 among {non_payment}"
     )
@@ -244,7 +257,11 @@ def when_maria_clicks_improve_fastest_payment_card_round_2(
     _generate_offers_for_round(ctx)
 
 
-@when(parsers.parse('Maria clicks "Improve terms" on the "{card_label}" card in round {n:d}'))
+@when(
+    parsers.parse(
+        'Maria clicks "Improve terms" on the "{card_label}" card in round {n:d}'
+    )
+)
 def when_maria_clicks_improve_card_in_round(
     card_label: str, n: int, ctx: ScenarioContext
 ) -> None:

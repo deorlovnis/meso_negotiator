@@ -41,12 +41,14 @@ class TestOpponentModelInitialization:
 
     def test_initial_weights_sum_to_one(self):
         model = OpponentModel.uniform()
-        total = sum([
-            model.weights.price,
-            model.weights.payment,
-            model.weights.delivery,
-            model.weights.contract,
-        ])
+        total = sum(
+            [
+                model.weights.price,
+                model.weights.payment,
+                model.weights.delivery,
+                model.weights.contract,
+            ]
+        )
         assert abs(total - 1.0) < 1e-9
 
     def test_initial_utility_floor_is_none(self):
@@ -125,12 +127,14 @@ class TestWeightsAlwaysSumToOne:
     """
 
     def _assert_sum_one(self, model: OpponentModel, context: str) -> None:
-        total = sum([
-            model.weights.price,
-            model.weights.payment,
-            model.weights.delivery,
-            model.weights.contract,
-        ])
+        total = sum(
+            [
+                model.weights.price,
+                model.weights.payment,
+                model.weights.delivery,
+                model.weights.contract,
+            ]
+        )
         assert abs(total - 1.0) < 1e-9, (
             f"Weights don't sum to 1.0 after {context}: sum={total}"
         )
@@ -222,7 +226,9 @@ class TestNoNegativeWeights:
             weights=Weights(price=0.01, payment=0.01, delivery=0.01, contract=0.97)
         )
         model.signal_improve(CardLabel.FASTEST_PAYMENT)
-        self._assert_non_negative(model, "improve FASTEST_PAYMENT from near-zero others")
+        self._assert_non_negative(
+            model, "improve FASTEST_PAYMENT from near-zero others"
+        )
 
 
 class TestSecureSetsFloor:
@@ -279,12 +285,14 @@ class TestAgreeReinforces:
             weights=Weights(price=0.20, payment=0.35, delivery=0.25, contract=0.20)
         )
         model.signal_agree()
-        total = sum([
-            model.weights.price,
-            model.weights.payment,
-            model.weights.delivery,
-            model.weights.contract,
-        ])
+        total = sum(
+            [
+                model.weights.price,
+                model.weights.payment,
+                model.weights.delivery,
+                model.weights.contract,
+            ]
+        )
         assert abs(total - 1.0) < 1e-9
 
 

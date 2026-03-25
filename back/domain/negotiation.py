@@ -148,8 +148,7 @@ class Negotiation:
     def _get_card_terms(self, label: CardLabel) -> TermValues:
         if self.current_meso_set is None:
             raise NegotiationError(
-                "No MESO set has been generated yet. "
-                "Call GetOffersUseCase first."
+                "No MESO set has been generated yet. Call GetOffersUseCase first."
             )
         meso = self.current_meso_set
         if label == CardLabel.BEST_PRICE:

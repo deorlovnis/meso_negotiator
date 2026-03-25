@@ -24,9 +24,7 @@ from back.domain.exceptions import NegotiationError
 logger = logging.getLogger(__name__)
 
 
-async def negotiation_error_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
+async def negotiation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Map NegotiationError to 409 Conflict.
 
     NegotiationError means the requested action is not valid for the current

@@ -15,17 +15,26 @@ from back.tests.conftest import (
 # ---------------------------------------------------------------------------
 
 
-@scenario("../features/core-loop.feature", "No generated offer violates the operator's walk-away limits")
+@scenario(
+    "../features/core-loop.feature",
+    "No generated offer violates the operator's walk-away limits",
+)
 def test_no_offer_violates_walk_away() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "MESO cards differ in term distribution despite equal operator utility")
+@scenario(
+    "../features/core-loop.feature",
+    "MESO cards differ in term distribution despite equal operator utility",
+)
 def test_cards_differ_in_distribution() -> None:
     pass
 
 
-@scenario("../features/core-loop.feature", "Offers in later rounds are more favorable to Maria than opening offers")
+@scenario(
+    "../features/core-loop.feature",
+    "Offers in later rounds are more favorable to Maria than opening offers",
+)
 def test_later_rounds_more_favorable() -> None:
     pass
 
@@ -35,7 +44,7 @@ def test_later_rounds_more_favorable() -> None:
 # ---------------------------------------------------------------------------
 
 
-@given("Maria clicked \"Improve terms\" in round 1")
+@given('Maria clicked "Improve terms" in round 1')
 def given_maria_clicked_improve_round_1(ctx: ScenarioContext) -> None:
     """Simulate Maria having clicked Improve on any card in round 1."""
     ctx.current_round = 1
@@ -152,7 +161,9 @@ def then_fastest_payment_has_lowest_payment(ctx: ScenarioContext) -> None:
     )
 
 
-@then('the "MOST BALANCED" card does not have the most extreme value on any single term')
+@then(
+    'the "MOST BALANCED" card does not have the most extreme value on any single term'
+)
 def then_most_balanced_not_extreme(ctx: ScenarioContext) -> None:
     label_map = {card.label: card for card in ctx.current_offers}
     balanced = label_map["MOST BALANCED"]
@@ -164,16 +175,24 @@ def then_most_balanced_not_extreme(ctx: ScenarioContext) -> None:
     # We require it is not simultaneously the unique extreme on every term.
     # Allow it to tie but not be the exclusive best on every dimension.
     is_extreme_price = balanced.price == min(prices) and prices.count(min(prices)) == 1
-    is_extreme_payment = balanced.payment == min(payments) and payments.count(min(payments)) == 1
-    is_extreme_delivery = balanced.delivery == min(deliveries) and deliveries.count(min(deliveries)) == 1
-    is_extreme_contract = balanced.contract == max(contracts) and contracts.count(max(contracts)) == 1
+    is_extreme_payment = (
+        balanced.payment == min(payments) and payments.count(min(payments)) == 1
+    )
+    is_extreme_delivery = (
+        balanced.delivery == min(deliveries) and deliveries.count(min(deliveries)) == 1
+    )
+    is_extreme_contract = (
+        balanced.contract == max(contracts) and contracts.count(max(contracts)) == 1
+    )
     # At least 2 of the 4 terms should NOT be extreme for the balanced card
-    extreme_count = sum([
-        is_extreme_price,
-        is_extreme_payment,
-        is_extreme_delivery,
-        is_extreme_contract,
-    ])
+    extreme_count = sum(
+        [
+            is_extreme_price,
+            is_extreme_payment,
+            is_extreme_delivery,
+            is_extreme_contract,
+        ]
+    )
     assert extreme_count <= 1, (
         f"MOST BALANCED card is the unique extreme on {extreme_count} dimensions, "
         f"expected at most 1"
@@ -207,7 +226,9 @@ def then_round_2_avg_price_higher_or_equal(ctx: ScenarioContext) -> None:
     )
 
 
-@then("the average payment speed across round 2 cards is equal to or faster than round 1")
+@then(
+    "the average payment speed across round 2 cards is equal to or faster than round 1"
+)
 def then_round_2_payment_faster_or_equal_s8(ctx: ScenarioContext) -> None:
     round_1_offers = None
     for round_num, offers in ctx.offer_history:
@@ -240,9 +261,15 @@ def then_at_least_one_term_improved(ctx: ScenarioContext) -> None:
     r1_avg_contract = sum(c.contract for c in round_1_offers) / len(round_1_offers)
 
     r2_avg_price = sum(c.price for c in ctx.current_offers) / len(ctx.current_offers)
-    r2_avg_payment = sum(c.payment for c in ctx.current_offers) / len(ctx.current_offers)
-    r2_avg_delivery = sum(c.delivery for c in ctx.current_offers) / len(ctx.current_offers)
-    r2_avg_contract = sum(c.contract for c in ctx.current_offers) / len(ctx.current_offers)
+    r2_avg_payment = sum(c.payment for c in ctx.current_offers) / len(
+        ctx.current_offers
+    )
+    r2_avg_delivery = sum(c.delivery for c in ctx.current_offers) / len(
+        ctx.current_offers
+    )
+    r2_avg_contract = sum(c.contract for c in ctx.current_offers) / len(
+        ctx.current_offers
+    )
 
     # Maria favors: higher price, lower payment days, lower delivery days, higher contract
     price_improved = r2_avg_price > r1_avg_price + 1e-6
@@ -250,6 +277,6 @@ def then_at_least_one_term_improved(ctx: ScenarioContext) -> None:
     delivery_improved = r2_avg_delivery < r1_avg_delivery - 1e-6
     contract_improved = r2_avg_contract > r1_avg_contract + 1e-6
 
-    assert any([price_improved, payment_improved, delivery_improved, contract_improved]), (
-        "At least one term must have moved in Maria's favor between round 1 and round 2"
-    )
+    assert any(
+        [price_improved, payment_improved, delivery_improved, contract_improved]
+    ), "At least one term must have moved in Maria's favor between round 1 and round 2"

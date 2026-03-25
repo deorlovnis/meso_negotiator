@@ -129,11 +129,17 @@ def _card_dto(offer: Offer, recommended: bool) -> CardDTO:
 def _compute_signals(label: CardLabel) -> TermSignals:
     """Compute visual signals: 'better' for strength dimension, 'neutral' for others."""
     if label == CardLabel.BEST_PRICE:
-        return TermSignals(price="better", payment="neutral", delivery="better", contract="neutral")
+        return TermSignals(
+            price="better", payment="neutral", delivery="better", contract="neutral"
+        )
     elif label == CardLabel.FASTEST_PAYMENT:
-        return TermSignals(price="neutral", payment="better", delivery="neutral", contract="neutral")
+        return TermSignals(
+            price="neutral", payment="better", delivery="neutral", contract="neutral"
+        )
     else:  # MOST_BALANCED
-        return TermSignals(price="neutral", payment="neutral", delivery="neutral", contract="neutral")
+        return TermSignals(
+            price="neutral", payment="neutral", delivery="neutral", contract="neutral"
+        )
 
 
 def _build_actions(is_final_round: bool, can_secure: bool = True) -> list[str]:

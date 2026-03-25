@@ -122,6 +122,7 @@ def terminal_client() -> TestClient:
 
     return _make_test_client(fresh_repo)
 
+
 # Concession curve defaults — read from Settings (single source of truth)
 _settings = get_settings()
 _DEFAULT_BETA = _settings.default_beta
@@ -138,18 +139,38 @@ _WALKAWAY_UTILITY = _settings.walkaway_utility
 class OperatorConfig:
     """Operator-side configuration set by James."""
 
-    weights: dict[str, float] = field(default_factory=lambda: {
-        "price": 0.40, "payment": 0.25, "delivery": 0.20, "contract": 0.15,
-    })
-    targets: dict[str, float] = field(default_factory=lambda: {
-        "price": 12.50, "payment": 75, "delivery": 10, "contract": 12,
-    })
-    walk_away: dict[str, float] = field(default_factory=lambda: {
-        "price": 14.50, "payment": 30, "delivery": 14, "contract": 24,
-    })
-    opening: dict[str, float] = field(default_factory=lambda: {
-        "price": 11.50, "payment": 90, "delivery": 7, "contract": 6,
-    })
+    weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "price": 0.40,
+            "payment": 0.25,
+            "delivery": 0.20,
+            "contract": 0.15,
+        }
+    )
+    targets: dict[str, float] = field(
+        default_factory=lambda: {
+            "price": 12.50,
+            "payment": 75,
+            "delivery": 10,
+            "contract": 12,
+        }
+    )
+    walk_away: dict[str, float] = field(
+        default_factory=lambda: {
+            "price": 14.50,
+            "payment": 30,
+            "delivery": 14,
+            "contract": 24,
+        }
+    )
+    opening: dict[str, float] = field(
+        default_factory=lambda: {
+            "price": 11.50,
+            "payment": 90,
+            "delivery": 7,
+            "contract": 6,
+        }
+    )
     round_limit: int = 5
 
 
@@ -196,9 +217,14 @@ class ScenarioContext:
     _opponent_model: OpponentModel | None = None
 
     # Opponent model weights (dict form for Then assertions)
-    opponent_weights: dict[str, float] = field(default_factory=lambda: {
-        "price": 0.25, "payment": 0.25, "delivery": 0.25, "contract": 0.25,
-    })
+    opponent_weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "price": 0.25,
+            "payment": 0.25,
+            "delivery": 0.25,
+            "contract": 0.25,
+        }
+    )
     utility_floor: float | None = None
 
     # Weight history: list of weight snapshots per round (for monotonicity checks)
@@ -283,16 +309,22 @@ def _meso_set_to_offer_cards(
 ) -> list[OfferCard]:
     """Convert domain MesoSet to list of OfferCard for ScenarioContext."""
     cards = []
-    for offer in [meso_set.best_price, meso_set.most_balanced, meso_set.fastest_payment]:
+    for offer in [
+        meso_set.best_price,
+        meso_set.most_balanced,
+        meso_set.fastest_payment,
+    ]:
         utility = compute_utility(offer.terms, term_config, operator_weights)
-        cards.append(OfferCard(
-            label=offer.label.value.replace("_", " "),
-            price=offer.terms.price,
-            payment=int(offer.terms.payment),
-            delivery=int(offer.terms.delivery),
-            contract=int(offer.terms.contract),
-            operator_utility=utility,
-        ))
+        cards.append(
+            OfferCard(
+                label=offer.label.value.replace("_", " "),
+                price=offer.terms.price,
+                payment=int(offer.terms.payment),
+                delivery=int(offer.terms.delivery),
+                contract=int(offer.terms.contract),
+                operator_utility=utility,
+            )
+        )
     return cards
 
 
@@ -348,9 +380,7 @@ def _generate_offers_for_round(ctx: ScenarioContext) -> list[OfferCard]:
 
 
 @given(
-    parsers.parse(
-        'James has configured the "packaging, mid-spend, commodity" cohort:'
-    ),
+    parsers.parse('James has configured the "packaging, mid-spend, commodity" cohort:'),
     target_fixture="ctx",
 )
 def given_james_configured_cohort(ctx: ScenarioContext, datatable) -> ScenarioContext:
@@ -448,9 +478,7 @@ def given_negotiation_at_round(n: int, ctx: ScenarioContext) -> None:
 
 
 @given(parsers.parse("the negotiation has reached round {n:d} of {limit:d}"))
-def given_negotiation_reached_round(
-    n: int, limit: int, ctx: ScenarioContext
-) -> None:
+def given_negotiation_reached_round(n: int, limit: int, ctx: ScenarioContext) -> None:
     ctx.current_round = n
     ctx.round_limit = limit
     ctx.config.round_limit = limit
@@ -458,10 +486,12 @@ def given_negotiation_reached_round(
     _generate_offers_for_round(ctx)
 
 
-@given(parsers.parse(
-    "the opponent model weights are price {p}, payment {pay}, "
-    "delivery {d}, contract {c}"
-))
+@given(
+    parsers.parse(
+        "the opponent model weights are price {p}, payment {pay}, "
+        "delivery {d}, contract {c}"
+    )
+)
 def given_opponent_weights(
     p: str, pay: str, d: str, c: str, ctx: ScenarioContext
 ) -> None:
@@ -506,7 +536,9 @@ def when_engine_presents_offers(engine_offers: list, ctx: ScenarioContext) -> No
 
 
 @when("the engine presents offers to Maria")
-def when_engine_presents_offers_generic(engine_offers: list, ctx: ScenarioContext) -> None:
+def when_engine_presents_offers_generic(
+    engine_offers: list, ctx: ScenarioContext
+) -> None:
     """Alias -- same fixture trigger."""
 
 
@@ -656,7 +688,10 @@ def opening_offers(ctx: ScenarioContext) -> list[OfferCard]:
     """Generate opening round offers (round 1, uniform opponent weights)."""
     ctx.current_round = 1
     ctx.opponent_weights = {
-        "price": 0.25, "payment": 0.25, "delivery": 0.25, "contract": 0.25,
+        "price": 0.25,
+        "payment": 0.25,
+        "delivery": 0.25,
+        "contract": 0.25,
     }
     ctx._opponent_model = None
     return _generate_offers_for_round(ctx)

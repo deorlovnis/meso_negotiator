@@ -96,8 +96,7 @@ class TestConfigDrift:
             seed_term = seed_config[term_name]
             reset_term = reset_config[term_name]
             assert seed_term == reset_term, (
-                f"Config drift on '{term_name}': "
-                f"seed={seed_term} vs reset={reset_term}"
+                f"Config drift on '{term_name}': seed={seed_term} vs reset={reset_term}"
             )
 
     def test_seed_weights_match_reset_weights(self) -> None:
@@ -233,9 +232,7 @@ class TestRouteResponseShapes:
         Error category: Integration errors.
         """
         client.get(_offers_url())  # activate
-        resp = client.post(
-            _agree_url(), json={"card_label": "MOST_BALANCED"}
-        )
+        resp = client.post(_agree_url(), json={"card_label": "MOST_BALANCED"})
         assert resp.status_code == 200
         validated = AgreeResponse.model_validate(resp.json())
         assert validated.status == "accepted"
@@ -251,9 +248,7 @@ class TestRouteResponseShapes:
         Error category: Integration errors.
         """
         client.get(_offers_url())  # activate
-        resp = client.post(
-            _secure_url(), json={"card_label": "BEST_PRICE"}
-        )
+        resp = client.post(_secure_url(), json={"card_label": "BEST_PRICE"})
         assert resp.status_code == 200
         validated = SecureResponse.model_validate(resp.json())
         assert validated.secured_offer.label is not None
@@ -269,16 +264,12 @@ class TestRouteResponseShapes:
         Error category: Integration errors.
         """
         client.get(_offers_url())  # activate
-        resp = client.post(
-            _improve_url(), json={"card_label": "FASTEST_PAYMENT"}
-        )
+        resp = client.post(_improve_url(), json={"card_label": "FASTEST_PAYMENT"})
         assert resp.status_code == 200
         validated = OffersResponse.model_validate(resp.json())
         assert len(validated.cards) == 3
 
-    def test_end_response_matches_end_response_model(
-        self, client: TestClient
-    ) -> None:
+    def test_end_response_matches_end_response_model(self, client: TestClient) -> None:
         """GIVEN an ACTIVE negotiation
         WHEN POST /end is called
         THEN the JSON response validates against EndResponse.
