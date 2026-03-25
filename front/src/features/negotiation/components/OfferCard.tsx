@@ -170,9 +170,11 @@ export function OfferCard({
                     setImprovingTerm(term)
                     setView('trade')
                   } else if (view === 'trade') {
-                    onImprove(improvingTerm?.type, term.type)
-                    setView('default')
-                    setImprovingTerm(null)
+                    if (improvingTerm) {
+                      onImprove(improvingTerm.type, term.type)
+                      setView('default')
+                      setImprovingTerm(null)
+                    }
                   }
                 }}
                 className={`relative flex items-center justify-between p-3.5 rounded-xl transition-all duration-300 w-full text-left ${
@@ -333,9 +335,11 @@ export function OfferCard({
               <button
                 type="button"
                 onClick={() => {
-                  onImprove(improvingTerm?.type, null)
-                  setView('default')
-                  setImprovingTerm(null)
+                  if (improvingTerm) {
+                    onImprove(improvingTerm.type, null)
+                    setView('default')
+                    setImprovingTerm(null)
+                  }
                 }}
                 className="w-full py-2.5 px-4 bg-white border border-[#a59080] text-[#a59080] font-semibold text-[13px] rounded-xl hover:bg-[#a59080] hover:text-white transition-colors shadow-sm mb-3 flex items-center justify-center gap-2 group"
               >
